@@ -259,9 +259,9 @@ Own commission only. Admin controls commission rules.
 Sales-approved documents only. Visibility levels:
 
 ```text
-ADMIN_ONLY
+INTERNAL
 AGENT_VISIBLE
-CUSTOMER_VISIBLE
+CUSTOMER_PROFILE_RELATED
 ```
 
 ---
@@ -353,11 +353,29 @@ Same pattern for `GET /projects` and related resources.
 
 ## 9. Next steps after this doc
 
-1. Scaffold monorepo folders + shared packages  
-2. Map MAIN Admin screen inventory from section 4 navigation  
-3. Define permission matrix tables per role x resource  
-4. Then implementation plans / Claude Code prompts per app
+1. ~~Map MAIN Admin screen inventory~~ (done)  
+2. ~~Lock Project Portfolio OS product calls~~ (done — see `2026-09-24-main-project-detail-portfolio-os.md`)  
+3. Permission matrix for `admin.projects.detail`  
+4. Implement P0–P1 (Overview + Setup) in MAIN  
+5. Scaffold monorepo folders + shared packages when copy/slim begins  
 
 ---
 
 *Locked by product decision 2026-09-24. Changes require an explicit architecture update, not silent UI drift.*
+
+---
+
+## 10. Project Portfolio OS locks (pointer)
+
+Normative detail for MAIN Project Workspace lives in `2026-09-24-main-project-detail-portfolio-os.md`.
+
+Locked there (do not diverge):
+
+- Project create is lightweight `DRAFT` then configure in-workspace.
+- Lifecycle: `DRAFT | ACTIVE | ON_HOLD | COMPLETED | ARCHIVED`.
+- `agentVisible` / `customerListed` are **publish flags**, not lifecycle statuses.
+- Facing: North/South/East/West. Corner: NONE/NE/NW/SE/SW.
+- Plot types are templates; per-plot overrides need permission, reason, audit.
+- Document vault: `INTERNAL | AGENT_VISIBLE | CUSTOMER_PROFILE_RELATED` — MAIN-customer never browses the project document repository.
+- MAIN-agent: read assigned project sales data; cannot edit project master data.
+- No hard-delete of project operational history after bookings/payments.

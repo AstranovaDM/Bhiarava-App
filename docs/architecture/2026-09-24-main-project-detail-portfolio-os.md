@@ -1,9 +1,11 @@
 # MAIN — Project Detail as Portfolio OS
 
-**Status:** Screen map (2026-09-24)  
+**Status:** LOCKED decisions + screen map (2026-09-24)  
 **Screen ID:** `admin.projects.detail`  
 **Route today:** `/projects/$projectId`  
-**Companion:** `2026-09-24-bhairava-three-app-architecture.md`, `2026-09-24-main-admin-screen-inventory.md`
+**Companions:** `2026-09-24-bhairava-three-app-architecture.md`, `2026-09-24-main-admin-screen-inventory.md`
+
+**Rule:** Product decisions in §10–§16 are locked. Implement permission matrix next, then P0–P1. Do not reopen locked items without an explicit architecture change.
 
 ---
 
@@ -13,6 +15,8 @@ Project detail is not a CRM record page. It is the **operating system for one pl
 
 **One-liner:** Open a project → run that project.
 
+**Creation stance (locked):** Project creation is **lightweight**. Capture basic identity → **save as `DRAFT`** → continue all further configuration inside this Project Workspace (not a long blocking create wizard).
+
 ---
 
 ## 2. What exists today (baseline)
@@ -21,31 +25,32 @@ Current tabs: **Overview · Plots · Customers · Bookings · Documents**
 
 | Area | Today | Gap vs Portfolio OS |
 |------|-------|---------------------|
-| Header | Code, name, location, status, approvals, plot/sold/value facts; Edit / Add plot / Site visit / Live layout | Missing phase/block summary, agent assignees, quick status change, publish flags for agent/customer |
-| Overview | Absorption chart + activity timeline | Thin: no inventory funnel, collections pulse, config completeness, amenity/pricing snapshot |
-| Plots | Table (number, area, facing, price, status) + links | No filters, bulk status, corner/road/premium columns, block/phase grouping, inline edit, map embed |
+| Header | Code, name, location, status, approvals, plot/sold/value facts; Edit / Add plot / Site visit / Live layout | Missing phase/block summary, agent assignees, lifecycle vs publish controls |
+| Overview | Absorption chart + activity timeline | Thin: no inventory funnel, collections pulse, readiness checklist, amenity/pricing snapshot |
+| Plots | Table (number, area, facing, price, status) + links | No filters, bulk status, corner/road/premium columns, block/phase grouping, polygon→plot link |
 | Customers | Table of customers who hold plots | No leads for this project, no agent filter |
 | Bookings | Table | No reservations / site visits scoped to project |
-| Documents | Flat table | No visibility (`ADMIN_ONLY` / `AGENT_VISIBLE` / `CUSTOMER_VISIBLE`), no master layout special slot, no upload |
-| Config | `ProjectEditor` + create wizard fields | Phases, blocks, plot types, amenities, pricing rules, media not first-class tabs |
+| Documents | Flat table | Visibility model not applied; no master-layout slot; no upload |
+| Config | `ProjectEditor` + create wizard fields | Phases, blocks, plot types, amenities richness, pricing rules, media not first-class |
 | Sales ops | Global only | No project-scoped visits / reservations / collections / agents |
 
-`project-config.ts` already defines facings, corner types, plot features, amenities catalog, and default pricing rules — the **data model for Portfolio OS exists in config**; the **project shell does not surface it**.
+`project-config.ts` already defines facings, corner types, plot features, amenities catalog, and default pricing rules — promote into Setup rather than inventing a parallel model. **Canonical enums below supersede mock spelling where they differ** (migrate mock → locked codes at implementation).
 
 ---
 
-## 3. Target information architecture
+## 3. Target information architecture (locked)
 
 ### Header (always on)
 
-- Identity: name, code, type, status (editable), location line  
-- Compliance chips: RERA / approvals  
-- KPI strip: Total / Available / Reserved / Booked / Sold|Registered · Absorption % · Pipeline value · Collected · Overdue  
+- Identity: name, code, type, **lifecycle status**, location line  
+- **Publish flags** (separate from lifecycle): Agent-visible · Customer-listed  
+- Compliance chips: RERA / approvals (when present)  
+- KPI strip: Total / Available / Reserved / Booked / Registered · Absorption % · Pipeline value · Collected · Overdue  
 - Primary actions: Edit basics · Add plots · Open layout · Upload master plan  
-- Secondary: Assign agents · Change status · Site visit · New reservation · New booking  
-- Optional: “Visible to agents” / “Listed for customers” toggles (publish)
+- Secondary: Assign agents · Change lifecycle · Site visit · New reservation · New booking  
+- Readiness indicator when `DRAFT` or when publish is blocked
 
-### Tabs (target)
+### Tabs (locked)
 
 ```text
 Overview
@@ -58,7 +63,7 @@ Team
 Activity
 ```
 
-Keep URL stable: `/projects/$projectId` with `?tab=` (or hash) so deep links work.
+URL: `/projects/$projectId?tab=` (stable deep links).
 
 ---
 
@@ -66,176 +71,367 @@ Keep URL stable: `/projects/$projectId` with `?tab=` (or hash) so deep links wor
 
 ### 4.1 Overview — project health
 
-**Purpose:** Answer “how is this project doing?” in one glance.
+1. **Inventory funnel** — counts + % per plot commercial status  
+2. **Collections pulse** — collected vs due, overdue, last payments  
+3. **Sales pulse** — visits / reservations / bookings; top agents on this project  
+4. **Readiness / setup completeness** — mirrors Draft→Active / publish checklist (§12)  
+5. **Recent activity** — project-scoped audit  
+6. **Absorption chart** — keep; prefer real transitions later  
 
-Modules:
+### 4.2 Setup — product definition (admin depth)
 
-1. **Inventory funnel** — counts + % for Available → Reserved → Booked → Registered/Sold (+ On hold / Blocked if used)  
-2. **Collections pulse** — collected vs due this month, overdue count, last 5 payments (link out)  
-3. **Sales pulse** — visits / reservations / bookings this week; top agents by bookings on this project  
-4. **Setup completeness** — checklist: identity, geo, approvals, phases/blocks, plot types, pricing rules, amenities, master layout uploaded, ≥1 agent assigned, ≥1 plot live  
-5. **Recent activity** — project-scoped audit (keep today’s timeline; wire to real audit later)  
-6. **Absorption chart** — keep; prefer real monthly status transitions when data exists  
+| Sub-section | Content |
+|-------------|---------|
+| **Identity** | Name, code, type, description, manager |
+| **Location** | Address, village, mandal, district, city, state, pincode, map pin |
+| **Legal & approvals** | RERA (when applicable), approval authority, legal notes, approval chips |
+| **Phases** | CRUD phases (name, order, status, dates) |
+| **Blocks / sectors** | CRUD blocks tied to phase |
+| **Plot types** | Reusable templates (defaults for area, dimensions, facing, premiums) — see §13 |
+| **Pricing rules** | Base rate + configurable premiums — see §14 |
+| **Amenities** | Catalog items with description, development status, completion %, media, visibility — see §10 |
+| **Media** | Hero, gallery, brochure (marketing; not the document vault) |
+| **Publish** | Agent-visible / Customer-listed flags + readiness gates |
 
-Density: desktop two-column; mobile stacked cards.
-
-### 4.2 Setup — product definition (admin-only depth)
-
-**Purpose:** Configure what the project *is* before and while selling. This is the biggest uplift vs today.
-
-Sub-sections (vertical nav or accordion inside the tab):
-
-| Sub-section | Fields / actions | Notes |
-|-------------|------------------|-------|
-| **Identity** | Name, code, type, status, description, manager | Maps to onboarding step 1 + editor |
-| **Location** | Address, village, mandal, district, city, state, pincode, map pin | Onboarding location |
-| **Legal & approvals** | RERA, approval authority, legal notes, approval chips | Surfaced in header chips |
-| **Phases** | CRUD phases (name, order, status, launch dates) | New first-class |
-| **Blocks / sectors** | CRUD blocks tied to phase; plot count target | New |
-| **Plot types** | Named types (e.g. 200 / 240 / 300 sq.yd), default dimensions, facing defaults | New; feeds inventory |
-| **Dimensions & facing rules** | Default road widths, corner types enabled, feature tags from `PLOT_FEATURES` | From `project-config` |
-| **Pricing rules** | Base rate/sq.yd, facing premiums, corner premium, road premiums, feature premiums | `defaultPricing()` / `PricingRules` |
-| **Amenities** | Multi-select from `AMENITY_CATALOG` groups | Agent/customer marketing later |
-| **Media** | Hero images, gallery, brochure PDF | New; storage later |
-| **Publish** | Agent-visible / Customer-listed flags; what marketing fields sync | Aligns three-app privacy |
-
-Rule: Setup never deletes sold/booked plot history; destructive changes need confirm + audit.
+Destructive Setup changes: confirm + audit. **No hard-delete of operational history** once bookings/payments exist (§16).
 
 ### 4.3 Layout & Plots — inventory OS
 
-**Purpose:** Own the plot map and inventory for this project only.
-
-Layout:
-
-- **Left / top:** mini live layout (embed or link-in-place to `/plots/layout?projectId=`)  
-- **Right / bottom:** inventory table with filters  
-
-Columns (minimum): Plot # · Phase · Block · Type · Area · Facing · Corner · Road · Features · Price · Status · Customer (if any; admin sees PII) · Agent  
-
-Actions:
-
-- Add plot (wizard prefilled with project)  
-- Bulk: change status (only legal transitions), assign type, apply price recalculation from rules  
-- Open layout editor (`/plots/editor?projectId=`)  
-- Row → plot drawer or `/plots` filtered  
-
-Status model (align globally): `AVAILABLE | RESERVED | BOOKED | REGISTERED | HOLD | BLOCKED` (exact enum = existing store; do not invent a second vocabulary).
+- Interactive layout polygons **link 1:1 to plot records** (locked).  
+- Inventory table: Plot # · Phase · Block · Type · Area · Dimensions · Facing · Corner · Road · Features · Price · Status · Customer (admin PII) · Agent · Override badge  
+- Add plot; bulk legal status transitions; recalculate price from rules; open layout editor  
+- Per-plot overrides of template fields where permitted (§13–§14)
 
 ### 4.4 Sales — project-scoped pipeline
 
-**Purpose:** Run sales for *this* project without bouncing to global lists first.
+Leads (slot) · Site visits · Reservations · Bookings · Customers — create actions pass `projectId`.
 
-Sub-tabs or segmented control:
-
-| Segment | Content |
-|---------|---------|
-| **Leads** | Leads tagged to this project (empty state until Leads screen exists — still reserve the slot) |
-| **Site visits** | Filtered list + “Schedule visit” |
-| **Reservations** | Active / expiring / converted / expired for this project |
-| **Bookings** | Existing bookings table (enhanced) |
-| **Customers** | Customers with interest or holdings here |
-
-Each row links to global detail; create actions pass `projectId` search param (already used by some onboarding routes).
+**Resale (locked):** stays a **global** ops screen with project filter; Overview shows count + deep link only (no second resale engine inside Project OS).
 
 ### 4.5 Finance — money for this project
 
-**Purpose:** Collections and schedules without opening global Finance first.
+Summary, payments, schedules, receipts shortcuts, commissions placeholder. Deep-link to global finance records.
 
-Modules:
-
-- Summary: collected, outstanding, overdue, this-month target  
-- Payments table (project filter)  
-- Payment schedule rollup by booking  
-- Receipts shortcuts  
-- **Commissions** rollup for this project (placeholder until Commissions screen exists)  
-
-No double entry: rows deep-link to `/payments/$id`, `/collections`, etc.
+**Role (locked):** Finance role may use Finance (+ read Overview/Sales/Documents as permitted) but **Setup is Founder/Admin edit**; Finance gets **view-only Setup** if needed for context.
 
 ### 4.6 Documents — vault with visibility
 
-**Purpose:** Project document vault (Admin owns full vault; agent/customer apps get filtered copies later).
+See §15. Special slots: Master layout · Brochure (file) · Approval docs.  
+**MAIN-customer never browses this repository.**
 
-Required:
+### 4.7 Team
 
-- Upload + type + visibility: `ADMIN_ONLY | AGENT_VISIBLE | CUSTOMER_VISIBLE`  
-- Special slots: **Master layout**, **Brochure**, **Approval docs**  
-- Table: name, type, visibility, modified, verified  
-- Never imply customer vault here — customer app only gets `CUSTOMER_VISIBLE` copies via My Documents / public marketing assets  
+Assign / unassign agents permitted to sell this project; mini performance on this project.
 
-### 4.7 Team — who sells this project
+### 4.8 Activity
 
-**Purpose:** Assign agents and (later) sales managers to the project.
-
-- Assigned agents list (from onboarding `agents[]`) with performance mini-stats on this project  
-- Assign / unassign  
-- Optional internal notes for ops  
-
-### 4.8 Activity — audit trail
-
-**Purpose:** Trust and support.
-
-- Filterable project audit: config changes, plot status, bookings, payments, document uploads, publish toggles  
-- Reuse `/settings/audit` event shape with `projectId` scope  
+Filterable audit: config, plot status, pricing overrides, bookings, payments, documents, lifecycle, publish toggles.
 
 ---
 
-## 5. Mapping from architecture admin capabilities
+## 5. Mapping from platform architecture
 
 | Architecture capability | Lands in |
 |-------------------------|----------|
-| Create / edit projects | Header + Setup → Identity |
+| Create / edit projects | Lightweight create → DRAFT; Header + Setup |
 | Phases, blocks, plot types, dimensions, facing, corner, roads | Setup + Layout & Plots |
 | Premium features, price rules, amenities | Setup |
 | Upload images, documents, master layout | Setup → Media + Documents |
 | Map plots; create/edit plots; change status | Layout & Plots |
 | Assign agents | Team |
-| Manage customers, bookings, payments, registration, resale | Sales + Finance (+ Registrations link from Sales/Bookings) |
-
-Registration & resale stay as **global ops screens** with project filter; Project OS shows counts + deep links, not a second registration engine.
+| Customers, bookings, payments, registration, resale | Sales + Finance + global ops links |
 
 ---
 
-## 6. What agents / customers will see later (do not build into MAIN UI)
+## 6. Cross-app visibility (locked summary)
 
-| Audience | Derived from this OS |
-|----------|----------------------|
-| MAIN-agent | Read-only project marketing + plot availability + `AGENT_VISIBLE` docs; no Setup edit |
-| MAIN-customer | Public project explore + available plot facts; no vault; no other owners |
-
-Publish flags and document visibility on this screen are what make that split possible.
-
----
-
-## 7. Implementation stance (when we build)
-
-1. **Do not greenfield** the route — deepen `/projects/$projectId`.  
-2. Promote Setup sections using existing `project-config.ts` + onboarding fields before inventing new models.  
-3. Prefer `?tab=setup` etc. over new nested routes for v1.  
-4. Layout embed can deep-link first; inline canvas second.  
-5. Leads / Commissions segments can ship as empty states with CTA to backlog items from the Admin inventory.  
+| Audience | Sees from a project |
+|----------|---------------------|
+| **MAIN** | Full Portfolio OS per permissions |
+| **MAIN-agent** | Assigned/allowed projects: details, layout, plot availability, pricing, **AGENT_VISIBLE** documents. **Cannot** modify project master data (Setup, plot types, pricing rules, lifecycle, publish). |
+| **MAIN-customer** | Public/listed projects & plot availability only. **No** project document repository. **No** other customers’ PII on reserved/booked/sold plots. Own booking/property docs only via **My Documents** / profile-related attachments. |
 
 ---
 
-## 8. Build slices (suggested order)
+## 7. Implementation stance
+
+1. Deepen `/projects/$projectId` — no greenfield route.  
+2. Promote `project-config.ts` + onboarding fields; migrate enums to locked codes.  
+3. `?tab=` for v1.  
+4. Layout: deep-link first OK; polygons must resolve to plot IDs before Customer-listed publish.  
+5. Leads / Commissions segments may empty-state until those Admin screens exist.
+
+---
+
+## 8. Build slices
 
 | Slice | Outcome |
 |-------|---------|
-| **P0** | Tab IA + Overview health (funnel, completeness, keep chart/activity) |
-| **P1** | Setup: Identity / Location / Legal / Amenities / Pricing rules (wire editor) |
-| **P2** | Layout & Plots: richer columns, filters, project-scoped layout links |
+| **P0** | Tab IA + Overview health + readiness checklist UI |
+| **P1** | Setup: Identity / Location / Legal / Amenities / Pricing rules |
+| **P2** | Layout & Plots: columns, filters, polygon↔plot, overrides |
 | **P3** | Documents visibility + master layout slot |
-| **P4** | Sales segments (visits / reservations / bookings / customers) scoped |
-| **P5** | Finance summary + Team assign + Activity audit filter |
-| **P6** | Phases / blocks / plot types CRUD + publish flags |
+| **P4** | Sales segments scoped |
+| **P5** | Finance summary + Team + Activity |
+| **P6** | Phases / blocks / plot types CRUD + publish gates enforced in API |
 
 ---
 
-## 9. Open product calls (only if blocking)
+## 9. Architecture capability map (unchanged intent)
 
-1. Exact plot status enum spelling (match store; document once).  
-2. Is **Resale** in-project or global-only with filter? (Recommend: global + count on Overview.)  
-3. Can Finance role edit Setup, or view-only + Finance tab? (Recommend: Setup = Founder/Admin; Finance tab = Finance+Admin.)  
+Registration & resale remain global with project filter; Project OS shows counts + links.
 
 ---
 
-*Next step after approval: either implement P0–P1 in MAIN, or write the matching permission matrix for `admin.projects.detail` actions.*
+# LOCKED PRODUCT DECISIONS
+
+## 10. Amenities (locked)
+
+Each project amenity record supports:
+
+- Catalog reference / name  
+- Description  
+- Development status (e.g. Planned / In progress / Completed — align with existing amenity status vocabulary)  
+- Completion %  
+- Media (optional images)  
+- Visibility (internal marketing vs agent vs customer-listed marketing surface)
+
+**Activation:** Amenities are **optional** for `DRAFT → ACTIVE` (warning if none).  
+**Customer-listed publish:** at least marketing copy or media for listed amenities is a **warning**, not a hard error.
+
+---
+
+## 11. Project lifecycle vs publish (locked)
+
+### Lifecycle status (exactly one)
+
+| Status | Meaning |
+|--------|---------|
+| `DRAFT` | Created; incomplete; not sold against; workspace setup in progress |
+| `ACTIVE` | Operational project; inventory/sales/finance allowed per readiness |
+| `ON_HOLD` | Temporarily paused (sales actions restricted; data retained) |
+| `COMPLETED` | Project commercially finished; read-heavy; limited edits |
+| `ARCHIVED` | Terminal soft-end; hidden from default lists; **no hard-delete** of history |
+
+### Publish / visibility flags (orthogonal to lifecycle)
+
+| Flag | Meaning |
+|------|---------|
+| `agentVisible` | Project appears for assigned/allowed agents in MAIN-agent |
+| `customerListed` | Project appears in MAIN-customer Explore |
+
+**`PUBLISHED` is not a lifecycle status.** “Published” means the relevant visibility flag(s) are on **and** readiness gates for that surface pass.
+
+Allowed combinations (normative):
+
+- `DRAFT` → both flags **must be off** (API-enforced).  
+- `ACTIVE` → flags optional, each gated by checklist (§12).  
+- `ON_HOLD` → flags may remain on for read-only browse, but new reservations/bookings blocked (API).  
+- `COMPLETED` / `ARCHIVED` → `customerListed` off by default; agent read may remain for history if `agentVisible`.
+
+Transitions (high level):
+
+```text
+DRAFT → ACTIVE          (readiness: Active checklist)
+ACTIVE ↔ ON_HOLD
+ACTIVE → COMPLETED
+ON_HOLD → ACTIVE | COMPLETED
+COMPLETED → ARCHIVED
+ARCHIVED → (no automatic reopen; Founder restore to COMPLETED only)
+```
+
+Never: hard-delete project with bookings/payments; use `ARCHIVED`.
+
+---
+
+## 12. Draft → Active / publish readiness (locked)
+
+### 12.1 Minimum to leave `DRAFT` → `ACTIVE` (errors block)
+
+| # | Requirement | Severity |
+|---|-------------|----------|
+| A1 | Name, code, project type | Error |
+| A2 | Location: city, state, pincode (or equivalent mandal/district + pincode if rural form used) | Error |
+| A3 | ≥1 plot inventory record on the project | Error |
+| A4 | Every plot has valid price (> 0) **or** resolvable price from rules + type (no null/zero sale price) | Error |
+| A5 | Lifecycle set explicitly to ACTIVE by permitted role | Error |
+
+### 12.2 Warnings on `DRAFT → ACTIVE` (do not block)
+
+| # | Item | Severity |
+|---|------|----------|
+| W1 | No interactive layout / polygons yet | Warning — layout may be added later |
+| W2 | No amenities configured | Warning |
+| W3 | No agents assigned | Warning — sales availability weak |
+| W4 | RERA / statutory fields empty | Warning **unless** jurisdiction profile marks RERA mandatory → then **Error** |
+| W5 | No hero/brochure media | Warning |
+| W6 | Pricing rules missing (plots may use only manual prices) | Warning |
+
+### 12.3 `agentVisible = true` (errors block)
+
+| # | Requirement | Severity |
+|---|-------------|----------|
+| G1 | Lifecycle is `ACTIVE` (not `DRAFT`) | Error |
+| G2 | Active checklist A1–A4 satisfied | Error |
+| G3 | ≥1 agent assigned **or** org-level “all agents” policy enabled | Error |
+| G4 | Agent-facing marketing basics: name, location, ≥1 available or shown plot | Error |
+
+### 12.4 `customerListed = true` (errors block)
+
+| # | Requirement | Severity |
+|---|-------------|----------|
+| C1 | Lifecycle is `ACTIVE` | Error |
+| C2 | Active checklist A1–A4 satisfied | Error |
+| C3 | Customer-visible project info: name, location, public description or media | Error |
+| C4 | Layout: interactive layout **or** static master-layout document in Documents with visibility suitable for marketing mirror — **at least one** required | Error |
+| C5 | No customer-listed publish while any plot lacks public-safe fields (number, area, availability, price) | Error |
+| C6 | RERA/legal: same as W4 rule (mandatory only when applicable) | Error if mandatory; else Warning |
+
+**Layout policy (locked):** Layout may be added **after** Active (warning W1). Layout (interactive **or** master-layout file) is **required before Customer-listed**.
+
+---
+
+## 13. Plot types, facing, corner, overrides (locked)
+
+### Plot types
+
+- Reusable **templates** on the project (and later org library if needed).  
+- Defaults: area, dimensions, facing, corner, road width, premium attributes, base price contribution.  
+- **Each plot** may override: area, dimensions, facing, corner, road width, premium attributes, price — subject to permission.
+
+### Facing (canonical)
+
+```text
+North | South | East | West
+```
+
+(UI may show N/S/E/W; store full tokens.)
+
+### Corner (canonical)
+
+```text
+NONE | NE | NW | SE | SW
+```
+
+Legacy mock labels (`Not corner`, `North-East`, …) map into these codes at migration.
+
+### Plot commercial status (state machine — locked vocabulary)
+
+Align with platform architecture + inventory:
+
+```text
+AVAILABLE → RESERVED → BOOKED → REGISTERED
+```
+
+Operational:
+
+```text
+HOLD      — temporarily unavailable; not sellable
+BLOCKED   — admin block (legal/dispute); not sellable
+```
+
+**Resale:** inventory offered for resale uses channel/flag or dedicated ops list; do not overload REGISTERED. Existing mock `resale` status migrates to REGISTERED/HOLD + `resaleListed` flag or Resale inventory entity — **implementation detail**, product rule: resale is global ops, not a fourth sales happy-path status.
+
+Transitions enforce the approved machine in API (agents cannot skip; admin may with audit where policy allows).
+
+---
+
+## 14. Pricing override rules (locked)
+
+1. **Default price** = project pricing rules applied to plot (base rate × area + facing/corner/road/feature premiums from rules).  
+2. Plot type defaults seed attributes before rules run.  
+3. **Plot-specific price override** allowed only if actor has permission `projects.plots.price_override` (Founder/Admin by default; not agents).  
+4. Override **requires**: new value, **reason** (non-empty), and writes **audit history** (who, when, before, after, reason).  
+5. Attribute overrides that change premium inputs (facing, corner, etc.) recalculate rule price unless a hard price override is active; if hard override active, show badge “Manual price” and do not silently overwrite.  
+6. Clearing a manual override recalculates from rules and audits.  
+7. MAIN-agent sees final sellable price; cannot set overrides.  
+8. MAIN-customer sees public price only on allowed plots.
+
+---
+
+## 15. Document visibility rules (locked)
+
+Project Documents vault visibility:
+
+| Value | Who |
+|-------|-----|
+| `INTERNAL` | MAIN roles with documents permission only |
+| `AGENT_VISIBLE` | MAIN + allowed MAIN-agent users |
+| `CUSTOMER_PROFILE_RELATED` | Not a browseable vault item for Explore. Attached into a **customer/booking/property** document flow; customer sees it under **My Documents** when entitled |
+
+**Rules:**
+
+- Do **not** expose the general Project Documents repository in MAIN-customer.  
+- Public marketing files (brochure PDF mirrored to Media, public images) use **Media / customerListed**, not vault browsing.  
+- Prefer `INTERNAL` default on upload.  
+- Master layout file may be `INTERNAL` or `AGENT_VISIBLE`; customer-facing map uses layout engine / marketing mirror under publish gates, not vault listing.  
+- Rename path from older draft labels `ADMIN_ONLY` / `CUSTOMER_VISIBLE` → this model (`CUSTOMER_VISIBLE` as vault browse is **rejected**).
+
+---
+
+## 16. Retention & delete (locked)
+
+- Once any **booking or payment** exists on a project, **hard-delete is forbidden**.  
+- Use `ARCHIVED` (and soft-hide).  
+- Plot/document deletes that would erase operational history are blocked; archive/hide instead.  
+- Audit log retained per company retention policy (Founder settings later).
+
+---
+
+## 17. Resolved former open calls
+
+| Former open call | Resolution |
+|------------------|------------|
+| Plot status enum | §13 commercial + HOLD/BLOCKED |
+| Resale in-project vs global | Global + Overview count |
+| Finance vs Setup edit | Setup edit = Founder/Admin; Finance view-only on Setup |
+| Lifecycle vs Published | §11 orthogonal flags |
+| Layout before Active? | Optional for Active; required for Customer-listed |
+| Amenities required? | Optional (warning) |
+| Facing / corner | §13 |
+| Doc visibility | §15 |
+
+---
+
+## 18. Remaining blocking calls
+
+**None for permission matrix or P0–P1.**
+
+Non-blocking follow-ups (do not stop P0–P1):
+
+1. Exact org-level “all agents can sell” policy UX.  
+2. Jurisdiction profile for mandatory RERA (data: company/project regulatory profile).  
+3. Whether plot type library is project-only in v1 or also org-scoped (v1 = project-scoped templates).  
+4. Mock `resale` status migration mechanics (flag vs entity) during data model PR.
+
+---
+
+## 19. Database implications (for later model PR)
+
+| Area | Implication |
+|------|-------------|
+| `projects` | `lifecycleStatus`, `agentVisible`, `customerListed`; soft `archivedAt`; no hard delete with operational children |
+| `project_amenities` | description, developmentStatus, completionPct, media refs, visibility |
+| `plot_types` | template table FK project (v1) |
+| `plots` | FK type; override columns; `priceOverride`, `priceOverrideReason`; facing/corner enums; polygon/geometry FK to layout feature id |
+| `pricing_rules` | JSON/table per project; audit on change |
+| `plot_price_override_audit` | history rows |
+| `documents` | `visibility` enum INTERNAL \| AGENT_VISIBLE \| CUSTOMER_PROFILE_RELATED; optional `customerId`/`bookingId` when profile-related |
+| `layout_features` | polygon ↔ `plotId` required before customer list gate |
+| `project_agents` | assignment table for Team + agentVisible gate |
+
+API must enforce readiness checklists and agent master-data deny rules server-side.
+
+---
+
+## 20. Readiness for next steps
+
+| Step | Ready? |
+|------|--------|
+| Permission matrix for `admin.projects.detail` | **Yes** |
+| P0–P1 implementation (Overview + Setup) | **Yes** — after permission matrix (recommended order) |
+| App code in this change | **No** — docs only |
+
+---
+
+*Locked 2026-09-24. Changes require an explicit architecture update.*
