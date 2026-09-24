@@ -20,7 +20,8 @@
     "generate": "prisma generate",
     "validate": "prisma validate",
     "migrate:dev": "prisma migrate dev",
-    "migrate:deploy": "prisma migrate deploy"
+    "migrate:deploy": "prisma migrate deploy",
+    "bootstrap": "tsx prisma/bootstrap/founder.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.16.0",
