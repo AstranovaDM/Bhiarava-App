@@ -43,6 +43,10 @@ import {
   canOverridePlotPrice,
   type LayoutAccess,
 } from "@/lib/domain/project-permissions";
+import {
+  projectPlotForRole,
+  customerDisplayName,
+} from "@/lib/domain/plot-pii";
 
 type Row = Plot & { canonical: CanonicalPlotStatus };
 
@@ -94,7 +98,7 @@ export function ProjectLayoutTab({
   if (access === "denied") return <AccessDenied />;
 
   const session = getSession();
-  const { savePlot, nextId, customers } = useData();
+  const { savePlot, nextId, customers, agents } = useData();
   const canEdit = canEditPlotMaster(session?.role) && access === "full";
   const canStatus = canChangePlotStatus(session?.role) && access === "full";
   const canAdd = canCreatePlot(session?.role) && access === "full";
@@ -253,8 +257,7 @@ export function ProjectLayoutTab({
             <div>
               <SectionTitle>Interactive layout</SectionTitle>
               <p className="pt-1 text-sm text-muted-foreground">
-                Project-scoped SVG overlay — zoom, pan, hover, click a polygon for plot detail.
-                Status colors follow the canonical 9 statuses.
+                Master plan underlay + SVG plot overlay — zoom/pan move together. Canonical 9 statuses.
               </p>
             </div>
           </div>
@@ -277,12 +280,13 @@ export function ProjectLayoutTab({
             </Link>
           </div>
         </div>
-        <div className="h-[420px] w-full overflow-hidden rounded-xl border border-outline-variant/20">
+        <div className="h-[min(560px,55vh)] w-full overflow-hidden rounded-xl border border-outline-variant/20 shadow-ambient">
           <PlotCanvas
             plots={filtered}
             selectedId={drawerId ?? undefined}
             onSelect={(p) => setDrawerId(p.id)}
             showNumbers
+            layoutImageUrl={project.layoutImage ?? null}
             className="h-full w-full"
           />
         </div>
@@ -376,9 +380,9 @@ export function ProjectLayoutTab({
       )}
 
       <Panel className="overflow-hidden p-0">
-        <div className="overflow-x-auto">
+        <div className="max-h-[min(640px,60vh)] overflow-auto">
           <table className="w-full min-w-[960px] text-left text-sm">
-            <thead className="border-b border-outline-variant/20 bg-surface-low/60 text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+            <thead className="sticky top-0 z-10 border-b border-outline-variant/20 bg-surface-low/95 backdrop-blur-sm text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
               <tr>
                 {canStatus && (
                   <th className="px-3 py-3">
@@ -429,7 +433,14 @@ export function ProjectLayoutTab({
                     (p.typeId && plotTypes.find((t) => t.id === p.typeId)?.name) ||
                     p.plotType ||
                     null;
-                  const customer = p.customerId ? byId(customers, p.customerId) : undefined;
+                  const projected = projectPlotForRole(p, {
+                    role: session?.role,
+                    sessionEmail: session?.email,
+                    customers,
+                    agentEmailToId: Object.fromEntries(
+                      agents.filter((a) => a.email).map((a) => [a.email!.toLowerCase(), a.id]),
+                    ),
+                  });
                   const corner = p.corner ? toCanonicalCorner(p.corner) : null;
                   return (
                     <tr
@@ -470,7 +481,11 @@ export function ProjectLayoutTab({
                         </Chip>
                       </td>
                       <td className="px-3 py-2.5">
-                        {customer?.name ?? <Unavailable note="—" />}
+                        {customerDisplayName(projected.customerView) === "—" ? (
+                          <Unavailable note="—" />
+                        ) : (
+                          customerDisplayName(projected.customerView)
+                        )}
                       </td>
                     </tr>
                   );

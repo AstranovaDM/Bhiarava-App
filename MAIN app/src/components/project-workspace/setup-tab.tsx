@@ -387,15 +387,34 @@ export function ProjectSetupTab({
                   onChange={(v) => patch({ brochure: v || undefined })}
                 />
               </Field>
-              <Field label="Layout image URL">
+              <Field label="Layout / master plan image URL">
                 <TextInput
                   value={draft.layoutImage ?? ""}
                   onChange={(v) => patch({ layoutImage: v || undefined })}
+                  placeholder="https://… or upload below"
+                />
+              </Field>
+              <Field label="Upload master plan">
+                <input
+                  type="file"
+                  accept="image/*"
+                  disabled={readOnly}
+                  className="block w-full text-xs file:mr-2 file:rounded-lg file:border-0 file:bg-surface-c file:px-3 file:py-2 file:text-xs file:font-medium"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file || readOnly) return;
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      const url = String(reader.result ?? "");
+                      if (url) patch({ layoutImage: url });
+                    };
+                    reader.readAsDataURL(file);
+                  }}
                 />
               </Field>
               <p className="sm:col-span-2 text-xs text-muted-foreground">
-                Media is marketing surface (not the document vault). Upload plumbing ships with
-                Documents (P3).
+                Master plan underlay for Layout & Plots. URL or local upload (data URL) persists with
+                the project in localStorage — does not wipe other Setup fields.
               </p>
             </div>
           )}
