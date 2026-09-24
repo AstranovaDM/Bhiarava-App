@@ -17,7 +17,17 @@ import {
   filterResalesForRole,
   legacyDocumentToProject,
   legacyRegistrationToCase,
+  normalizeRegistrationCase,
   resaleCasesFromPlots,
+  deriveOpsDashboard,
+  replaceDocumentVersion,
+  archiveDocument,
+  setDocumentVerification,
+  applyScheduleRegistration,
+  applyCompleteRegistration,
+  createResaleListing,
+  registrationDocsBlocker,
+  missingRequiredDocs,
   type DocumentVisibility,
   type ProjectDocument,
   type RegistrationCase,
@@ -40,7 +50,17 @@ export function ProjectDocumentsTab({ project }: { project: Project }) {
   const canView = canViewOperations(role);
   const canMutate = canMutateOperations(role);
 
-  const { customers, plots, bookings, agents } = useData();
+  const store = useData() as ReturnType<typeof useData> & {
+    opsDocuments?: ProjectDocument[];
+    opsRegistrations?: RegistrationCase[];
+    opsResales?: ResaleCase[];
+    savePlot: (p: (typeof plots extends Array<infer P> ? P : never) | any) => void;
+    saveOpsDocument?: (d: ProjectDocument) => void;
+    saveOpsRegistration?: (r: RegistrationCase) => void;
+    saveOpsResale?: (r: ResaleCase) => void;
+    ensureOpsSeed?: (projectId: string) => void;
+  };
+  const { customers, plots, bookings, agents, savePlot } = store;
   const docsSource = seedDocuments;
   const regsSource = seedRegistrations;
 
@@ -61,7 +81,7 @@ export function ProjectDocumentsTab({ project }: { project: Project }) {
   const [selectedRegId, setSelectedRegId] = useState<string | null>(null);
   const [selectedResaleId, setSelectedResaleId] = useState<string | null>(null);
   const [visFilter, setVisFilter] = useState<DocumentVisibility | "ALL">("ALL");
-  const [sheet, setSheet] = useState<"doc" | "reg" | null>(null);
+  const [sheet, setSheet] = useState<"doc" | "reg" | "resale" | null>(null);
   const [docForm, setDocForm] = useState({
     name: "",
     docType: "Other" as ProjectDocument["docType"],
@@ -70,7 +90,7 @@ export function ProjectDocumentsTab({ project }: { project: Project }) {
   });
   const [regForm, setRegForm] = useState({
     bookingId: "",
-    stage: "Documentation" as RegistrationStage,
+    stage: "DOCUMENTS_PENDING" as RegistrationStage,
     slot: "",
     subRegistrar: "Shamshabad",
     notes: "",
@@ -106,6 +126,7 @@ export function ProjectDocumentsTab({ project }: { project: Project }) {
       return [...map.values()];
     });
     setSeeded(true);
+    store.ensureOpsSeed?.(project.id);
   }, [seeded, project.id, bookings, plots, docsSource, regsSource]);
 
   const baseDocs = useMemo(() => {
@@ -171,6 +192,24 @@ export function ProjectDocumentsTab({ project }: { project: Project }) {
     ? visibleResales.find((r) => r.id === selectedResaleId)
     : undefined;
 
+  const opsDashboard = useMemo(
+    () =>
+      deriveOpsDashboard({
+        documents: baseDocs,
+        registrations: baseRegs,
+        resales: baseResales,
+        projectId: project.id,
+        role,
+        agentAssignedCustomerIds,
+        bookings,
+        agentId: sessionAgentId,
+      }),
+    [baseDocs, baseRegs, baseResales, project.id, role, agentAssignedCustomerIds, bookings, sessionAgentId],
+  );
+
+  const [actionMsg, setActionMsg] = useState<string | null>(null);
+  const [resaleForm, setResaleForm] = useState({ plotId: "", askingPrice: "", notes: "" });
+
   function reloadDemoSeed() {
     const seed = buildOperationsDemoSeed({
       projectId: project.id,
@@ -210,7 +249,7 @@ export function ProjectDocumentsTab({ project }: { project: Project }) {
     if (!canMutate || !regForm.bookingId) return;
     const booking = byId(bookings, regForm.bookingId);
     if (!booking) return;
-    const row: RegistrationCase = {
+    const row = normalizeRegistrationCase({
       id: `REG-OPS-${Date.now()}`,
       projectId: project.id,
       bookingId: booking.id,
@@ -219,11 +258,129 @@ export function ProjectDocumentsTab({ project }: { project: Project }) {
       stage: regForm.stage,
       slot: regForm.slot.trim() || `${new Date().toISOString().slice(0, 10)} · 11:00`,
       subRegistrar: regForm.subRegistrar.trim() || "Shamshabad",
+      registrarOffice: regForm.subRegistrar.trim() || "Shamshabad",
+      responsibleStaff: session?.email ?? "admin@bhairava.com",
+      requiredDocTypes: ["KYC", "Agreement", "Sale deed"],
       ...(regForm.notes.trim() ? { notes: regForm.notes.trim() } : {}),
-    };
+    });
     setLocalRegs((prev) => [row, ...prev]);
     setSelectedRegId(row.id);
     setSheet(null);
+  }
+
+
+  function verifySelectedDoc() {
+    if (!canMutate || !detailDoc) return;
+    const next = setDocumentVerification(detailDoc, "Verified");
+    setLocalDocs((prev) => {
+      const map = new Map(prev.map((d) => [d.id, d]));
+      map.set(next.id, next);
+      return [...map.values()];
+    });
+    setActionMsg(`Verified ${next.name}`);
+  }
+
+  function replaceSelectedDoc() {
+    if (!canMutate || !detailDoc) return;
+    const next = replaceDocumentVersion(detailDoc, {
+      name: detailDoc.name.replace(/(\.\w+)?$/, (m) => `-v${(detailDoc.currentVersion ?? 1) + 1}${m || ".pdf"}`),
+      sizeKb: Math.max(80, detailDoc.sizeKb + 15),
+      uploadedBy: session?.email ?? "admin@bhairava.com",
+      notes: "Replaced version (no hard-delete)",
+    });
+    setLocalDocs((prev) => {
+      const map = new Map(prev.map((d) => [d.id, d]));
+      map.set(next.id, next);
+      return [...map.values()];
+    });
+    setSelectedDocId(next.id);
+    setActionMsg(`Replaced → v${next.currentVersion}`);
+  }
+
+  function archiveSelectedDoc() {
+    if (!canMutate || !detailDoc) return;
+    const next = archiveDocument(detailDoc);
+    setLocalDocs((prev) => {
+      const map = new Map(prev.map((d) => [d.id, d]));
+      map.set(next.id, next);
+      return [...map.values()];
+    });
+    setActionMsg(`Archived ${next.name}`);
+    setSelectedDocId(null);
+  }
+
+  function scheduleSelectedReg() {
+    if (!canMutate || !detailReg) return;
+    const scheduleOpts: { scheduledAt: string; registrarOffice?: string } = {
+      scheduledAt: detailReg.slot || `${new Date().toISOString().slice(0, 10)}T11:00:00`,
+    };
+    const office = detailReg.registrarOffice || detailReg.subRegistrar;
+    if (office) scheduleOpts.registrarOffice = office;
+    const result = applyScheduleRegistration(detailReg, baseDocs, scheduleOpts);
+    if (!result.ok) {
+      setActionMsg(result.error);
+      return;
+    }
+    setLocalRegs((prev) => {
+      const map = new Map(prev.map((r) => [r.id, r]));
+      map.set(result.registration.id, result.registration);
+      return [...map.values()];
+    });
+    setSelectedRegId(result.registration.id);
+    setActionMsg("Registration scheduled");
+  }
+
+  function completeSelectedReg() {
+    if (!canMutate || !detailReg) return;
+    const plot = plots.find((p) => p.id === detailReg.plotId);
+    if (!plot) {
+      setActionMsg("Plot not found for registration");
+      return;
+    }
+    const result = applyCompleteRegistration(detailReg, baseDocs, plot, {
+      actorId: session?.email ?? "admin@bhairava.com",
+    });
+    if (!result.ok) {
+      setActionMsg(result.error);
+      return;
+    }
+    setLocalRegs((prev) => {
+      const map = new Map(prev.map((r) => [r.id, r]));
+      map.set(result.registration.id, result.registration);
+      return [...map.values()];
+    });
+    savePlot(result.plot);
+    setSelectedRegId(result.registration.id);
+    setActionMsg(`Registration completed → plot ${result.plot.canonicalStatus ?? result.plot.status}`);
+  }
+
+  function createResaleFromForm() {
+    if (!canMutate || !resaleForm.plotId) return;
+    const plot = plots.find((p) => p.id === resaleForm.plotId);
+    if (!plot) {
+      setActionMsg("Plot not found");
+      return;
+    }
+    const price = Number(resaleForm.askingPrice);
+    const booking = bookings.find((b) => b.plotId === plot.id && b.projectId === project.id);
+    const listingOpts: Parameters<typeof createResaleListing>[1] = {
+      listingId: `RSL-OPS-${Date.now()}`,
+      askingPrice: price,
+      actorId: session?.email ?? "admin@bhairava.com",
+      approvalStatus: "APPROVED",
+    };
+    if (booking?.id) listingOpts.originalBookingId = booking.id;
+    if (resaleForm.notes.trim()) listingOpts.notes = resaleForm.notes.trim();
+    const result = createResaleListing(plot, listingOpts);
+    if (!result.ok) {
+      setActionMsg(result.error);
+      return;
+    }
+    setLocalResales((prev) => [result.listing, ...prev]);
+    savePlot(result.plot);
+    setSelectedResaleId(result.listing.listingId ?? result.listing.id);
+    setSheet(null);
+    setActionMsg(`Resale listed → plot ${result.plot.canonicalStatus ?? result.plot.status}`);
   }
 
   if (!canView) {
@@ -270,7 +427,7 @@ export function ProjectDocumentsTab({ project }: { project: Project }) {
               onClick={() => {
                 setRegForm({
                   bookingId: projectBookings[0]?.id ?? "",
-                  stage: "Documentation",
+                  stage: "DOCUMENTS_PENDING",
                   slot: "",
                   subRegistrar: "Shamshabad",
                   notes: "",
@@ -280,6 +437,26 @@ export function ProjectDocumentsTab({ project }: { project: Project }) {
               data-testid="ops-add-reg"
             >
               Add registration
+            </Btn>
+          )}
+          {canMutate && section === "resale" && (
+            <Btn
+              variant="primary"
+              onClick={() => {
+                const eligible = plots.filter((p) => {
+                  const st = (p.canonicalStatus ?? p.status ?? "").toString().toUpperCase();
+                  return p.projectId === project.id && (st === "SOLD" || st === "REGISTERED" || st === "registered" || st === "sold");
+                });
+                setResaleForm({
+                  plotId: eligible[0]?.id ?? "",
+                  askingPrice: eligible[0] ? String(Math.round((eligible[0].areaSqYd || 200) * (eligible[0].pricePerSqYd || 25000))) : "",
+                  notes: "",
+                });
+                setSheet("resale");
+              }}
+              data-testid="ops-add-resale"
+            >
+              List for resale
             </Btn>
           )}
         </div>
@@ -309,6 +486,30 @@ export function ProjectDocumentsTab({ project }: { project: Project }) {
             <Icon className="h-3.5 w-3.5" />
             {label}
           </button>
+        ))}
+      </div>
+
+      {actionMsg && (
+        <p className="rounded-lg bg-surface-c px-3 py-2 text-sm text-foreground" data-testid="ops-action-msg">
+          {actionMsg}
+        </p>
+      )}
+
+      <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-6" data-testid="ops-dashboard">
+        {[
+          ["Docs pending", opsDashboard.documentsPending],
+          ["Docs verified", opsDashboard.documentsVerified],
+          ["Regs pending", opsDashboard.registrationsPending],
+          ["Regs scheduled", opsDashboard.registrationsScheduled],
+          ["Regs completed", opsDashboard.registrationsCompleted],
+          ["Resale active", opsDashboard.resaleListingsActive],
+        ].map(([label, value]) => (
+          <Panel key={String(label)} className="!p-3">
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
+            <div className="font-display text-xl text-foreground" data-testid={`ops-metric-${String(label).toLowerCase().replace(/\s+/g, "-")}`}>
+              {value}
+            </div>
+          </Panel>
         ))}
       </div>
 
@@ -430,6 +631,31 @@ export function ProjectDocumentsTab({ project }: { project: Project }) {
                     <div>{detailDoc.notes}</div>
                   </div>
                 )}
+                {canMutate && (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <Btn variant="tonal" onClick={verifySelectedDoc} data-testid="ops-verify-doc">
+                      Verify
+                    </Btn>
+                    <Btn variant="tonal" onClick={replaceSelectedDoc} data-testid="ops-replace-doc">
+                      Replace / version
+                    </Btn>
+                    <Btn variant="ghost" onClick={archiveSelectedDoc} data-testid="ops-archive-doc">
+                      Archive
+                    </Btn>
+                  </div>
+                )}
+                {(detailDoc.versions?.length ?? 0) > 0 && (
+                  <div data-testid="ops-doc-versions">
+                    <div className="text-xs text-muted-foreground">Version history</div>
+                    <ul className="mt-1 space-y-1 text-xs font-mono">
+                      {[...(detailDoc.versions ?? [])].slice().reverse().map((v) => (
+                        <li key={v.version}>
+                          v{v.version} · {v.name} · {String(v.uploadedAt).slice(0, 10)} · {v.uploadedBy}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 <p className="flex items-start gap-2 rounded-lg bg-surface-c p-2 text-xs text-muted-foreground">
                   <Shield className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                   Customer never browses this project vault in MAIN. Profile-related docs may surface
@@ -518,6 +744,32 @@ export function ProjectDocumentsTab({ project }: { project: Project }) {
                   {detailReg.subRegistrar}
                 </div>
                 {detailReg.notes && <p>{detailReg.notes}</p>}
+                {(() => {
+                  const miss = missingRequiredDocs(detailReg, baseDocs);
+                  const blocker = registrationDocsBlocker(detailReg, baseDocs);
+                  return (
+                    <div className="space-y-2" data-testid="ops-reg-docs-gate">
+                      <div className="text-xs text-muted-foreground">Required docs</div>
+                      <div className="text-xs">
+                        Missing: {miss.missingTypes.length ? miss.missingTypes.join(", ") : "—"}
+                      </div>
+                      <div className="text-xs">
+                        Unverified: {miss.unverifiedTypes.length ? miss.unverifiedTypes.join(", ") : "—"}
+                      </div>
+                      {blocker && (
+                        <p className="rounded bg-surface-c p-2 text-xs text-amber-700 dark:text-amber-300" data-testid="ops-reg-blocker">
+                          {blocker}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
+                {canMutate && (
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    <Btn variant="tonal" onClick={scheduleSelectedReg} data-testid="ops-schedule-reg">Schedule</Btn>
+                    <Btn variant="primary" onClick={completeSelectedReg} data-testid="ops-complete-reg">Complete</Btn>
+                  </div>
+                )}
               </div>
             )}
           </Panel>
@@ -697,6 +949,43 @@ export function ProjectDocumentsTab({ project }: { project: Project }) {
           />
         </Field>
       </EditSheet>
+      <EditSheet
+        open={sheet === "resale"}
+        title="Create resale listing"
+        description="Eligible plots: SOLD or REGISTERED. Ownership trail preserved."
+        onClose={() => setSheet(null)}
+        onSave={createResaleFromForm}
+      >
+        <Field label="Plot" required>
+          <SelectInput
+            value={resaleForm.plotId}
+            onChange={(v) => setResaleForm((f) => ({ ...f, plotId: v }))}
+            options={[
+              { value: "", label: "Select plot" },
+              ...plots
+                .filter((p) => p.projectId === project.id)
+                .map((p) => ({
+                  value: p.id,
+                  label: `#${p.number} · ${(p.canonicalStatus ?? p.status) as string}`,
+                })),
+            ]}
+          />
+        </Field>
+        <Field label="Asking price" required>
+          <TextInput
+            value={resaleForm.askingPrice}
+            onChange={(v) => setResaleForm((f) => ({ ...f, askingPrice: v }))}
+            placeholder="5000000"
+          />
+        </Field>
+        <Field label="Notes">
+          <TextareaInput
+            value={resaleForm.notes}
+            onChange={(v) => setResaleForm((f) => ({ ...f, notes: v }))}
+          />
+        </Field>
+      </EditSheet>
+
     </div>
   );
 }

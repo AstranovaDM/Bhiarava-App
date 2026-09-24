@@ -51,6 +51,9 @@ import type {
   PaymentScheduleItem,
 } from "@/lib/domain/finance";
 import { buildFinanceDemoSeed, mergeFinanceSeed } from "@/lib/domain/finance-seed";
+import type { ProjectDocument, RegistrationCase, ResaleCase } from "@/lib/domain/operations";
+import { buildOperationsDemoSeed, mergeOperationsSeed } from "@/lib/domain/operations-seed";
+import { documents as seedDocuments, registrations as seedRegistrations } from "@/lib/mock-data";
 
 const KEY = "bhairava.admin.v3";
 
@@ -71,6 +74,10 @@ interface Persisted {
   commissions?: CommissionRecord[];
   commissionRules?: CommissionRule[];
   financeSeededProjects?: string[];
+  opsDocuments?: ProjectDocument[];
+  opsRegistrations?: RegistrationCase[];
+  opsResales?: ResaleCase[];
+  opsSeededProjects?: string[];
 }
 
 interface Data {
@@ -88,6 +95,9 @@ interface Data {
   paymentAdjustments: PaymentAdjustment[];
   commissions: CommissionRecord[];
   commissionRules: CommissionRule[];
+  opsDocuments: ProjectDocument[];
+  opsRegistrations: RegistrationCase[];
+  opsResales: ResaleCase[];
 }
 
 interface Ctx extends Data {
@@ -115,6 +125,10 @@ interface Ctx extends Data {
   saveCommission: (c: CommissionRecord) => void;
   saveCommissionRule: (r: CommissionRule) => void;
   ensureFinanceSeed: (projectId: string) => void;
+  saveOpsDocument: (d: ProjectDocument) => void;
+  saveOpsRegistration: (r: RegistrationCase) => void;
+  saveOpsResale: (r: ResaleCase) => void;
+  ensureOpsSeed: (projectId: string) => void;
   /** Re-evaluate reservation expiry deterministically (load/action). */
   refreshReservationExpiry: () => void;
   reset: () => void;
@@ -168,6 +182,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [commissions, setCommissions] = useState<CommissionRecord[]>([]);
   const [commissionRules, setCommissionRules] = useState<CommissionRule[]>([]);
   const [financeSeededProjects, setFinanceSeededProjects] = useState<string[]>([]);
+  const [opsDocuments, setOpsDocuments] = useState<ProjectDocument[]>([]);
+  const [opsRegistrations, setOpsRegistrations] = useState<RegistrationCase[]>([]);
+  const [opsResales, setOpsResales] = useState<ResaleCase[]>([]);
+  const [opsSeededProjects, setOpsSeededProjects] = useState<string[]>([]);
 
   useEffect(() => {
     try {
@@ -207,6 +225,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (parsed.commissions) setCommissions(parsed.commissions);
       if (parsed.commissionRules) setCommissionRules(parsed.commissionRules);
       if (parsed.financeSeededProjects) setFinanceSeededProjects(parsed.financeSeededProjects);
+      if (parsed.opsDocuments) setOpsDocuments(parsed.opsDocuments);
+      if (parsed.opsRegistrations) setOpsRegistrations(parsed.opsRegistrations);
+      if (parsed.opsResales) setOpsResales(parsed.opsResales);
+      if (parsed.opsSeededProjects) setOpsSeededProjects(parsed.opsSeededProjects);
     } catch {
       /* ignore corrupt storage — keep seed data */
     }
@@ -229,6 +251,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       commissions: CommissionRecord[];
       commissionRules: CommissionRule[];
       financeSeededProjects: string[];
+      opsDocuments: ProjectDocument[];
+      opsRegistrations: RegistrationCase[];
+      opsResales: ResaleCase[];
+      opsSeededProjects: string[];
     }) => {
       try {
         const payload: Persisted = {
@@ -253,6 +279,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
           commissions: next.commissions,
           commissionRules: next.commissionRules,
           financeSeededProjects: next.financeSeededProjects,
+          opsDocuments: next.opsDocuments,
+          opsRegistrations: next.opsRegistrations,
+          opsResales: next.opsResales,
+          opsSeededProjects: next.opsSeededProjects,
         };
         localStorage.setItem(KEY, JSON.stringify(payload));
       } catch {
@@ -280,6 +310,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
         commissions: CommissionRecord[];
         commissionRules: CommissionRule[];
         financeSeededProjects: string[];
+        opsDocuments: ProjectDocument[];
+        opsRegistrations: RegistrationCase[];
+        opsResales: ResaleCase[];
+        opsSeededProjects: string[];
       }>,
     ) => {
       const next = {
@@ -298,10 +332,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
         commissions: patch.commissions ?? commissions,
         commissionRules: patch.commissionRules ?? commissionRules,
         financeSeededProjects: patch.financeSeededProjects ?? financeSeededProjects,
+        opsDocuments: patch.opsDocuments ?? opsDocuments,
+        opsRegistrations: patch.opsRegistrations ?? opsRegistrations,
+        opsResales: patch.opsResales ?? opsResales,
+        opsSeededProjects: patch.opsSeededProjects ?? opsSeededProjects,
       };
       persist(next);
     },
-    [core, extraPlots, extraBookings, extraReservations, extraVisits, cancelRequests, financePayments, paymentSchedules, paymentAdjustments, commissions, commissionRules, financeSeededProjects, persist],
+    [core, extraPlots, extraBookings, extraReservations, extraVisits, cancelRequests, financePayments, paymentSchedules, paymentAdjustments, commissions, commissionRules, financeSeededProjects, opsDocuments, opsRegistrations, opsResales, opsSeededProjects, persist],
   );
 
   const upsertCore = useCallback(
@@ -353,6 +391,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       paymentAdjustments,
       commissions,
       commissionRules,
+      opsDocuments,
+      opsRegistrations,
+      opsResales,
       saveProject: (p) =>
         upsertCore(
           "projects",
@@ -471,6 +512,58 @@ export function DataProvider({ children }: { children: ReactNode }) {
           return next;
         });
       },
+      saveOpsDocument: (d) => {
+        setOpsDocuments((prev) => {
+          const next = upsertExtra(prev, d);
+          snapshot({ opsDocuments: next });
+          return next;
+        });
+      },
+      saveOpsRegistration: (r) => {
+        setOpsRegistrations((prev) => {
+          const next = upsertExtra(prev, r);
+          snapshot({ opsRegistrations: next });
+          return next;
+        });
+      },
+      saveOpsResale: (r) => {
+        setOpsResales((prev) => {
+          const next = upsertExtra(prev, r);
+          snapshot({ opsResales: next });
+          return next;
+        });
+      },
+      ensureOpsSeed: (projectId) => {
+        if (opsSeededProjects.includes(projectId)) return;
+        const bookingsNow = mergeById(seedBookings, extraBookings);
+        const plotsNow = mergeById(seedPlots, extraPlots);
+        const demo = buildOperationsDemoSeed({
+          projectId,
+          bookings: bookingsNow,
+          plots: plotsNow,
+          documents: seedDocuments,
+          registrations: seedRegistrations,
+        });
+        const merged = mergeOperationsSeed(
+          {
+            documents: opsDocuments,
+            registrations: opsRegistrations,
+            resales: opsResales,
+          },
+          demo,
+        );
+        setOpsDocuments(merged.documents);
+        setOpsRegistrations(merged.registrations);
+        setOpsResales(merged.resales);
+        const nextSeeded = [...opsSeededProjects, projectId];
+        setOpsSeededProjects(nextSeeded);
+        snapshot({
+          opsDocuments: merged.documents,
+          opsRegistrations: merged.registrations,
+          opsResales: merged.resales,
+          opsSeededProjects: nextSeeded,
+        });
+      },
       ensureFinanceSeed: (projectId) => {
         if (financeSeededProjects.includes(projectId)) return;
         const bookingsNow = mergeById(seedBookings, extraBookings);
@@ -531,6 +624,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setCommissions([]);
         setCommissionRules([]);
         setFinanceSeededProjects([]);
+        setOpsDocuments([]);
+        setOpsRegistrations([]);
+        setOpsResales([]);
+        setOpsSeededProjects([]);
       },
       nextId: (prefix, list) => {
         let max = 0;
@@ -558,6 +655,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       commissions,
       commissionRules,
       financeSeededProjects,
+      opsDocuments,
+      opsRegistrations,
+      opsResales,
+      opsSeededProjects,
       upsertCore,
       removeCore,
       upsertExtra,
