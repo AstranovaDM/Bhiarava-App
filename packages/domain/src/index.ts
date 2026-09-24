@@ -10,3 +10,5 @@ export * from './money';
 export * from './document-visibility';
 export * from './reservation';
 export * from './pii';
+export * from './plot-geometry';
+export * from './plot-status-colors';
