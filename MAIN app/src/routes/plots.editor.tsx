@@ -3,12 +3,15 @@ import { useMemo, useState } from "react";
 import { MousePointer2, PenTool, Scissors, Ruler, Eye, EyeOff } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { PlotCanvas, statusFill, statusLabel } from "@/components/plot-canvas";
-import { byId, plots as allPlots, type Plot, type PlotStatus } from "@/lib/mock-data";
-
-const plots = allPlots.filter((p) => p.projectId === "PRJ-01");
+import { byId, type Plot, type PlotStatus } from "@/lib/mock-data";
+import { useData } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/plots/editor")({
+  validateSearch: (search: Record<string, unknown>): { projectId?: string } => {
+    const projectId = typeof search["projectId"] === "string" ? search["projectId"] : undefined;
+    return projectId ? { projectId } : {};
+  },
   head: () => ({
     meta: [
       { title: "Layout Mapping Editor — Bhairava" },
@@ -35,6 +38,13 @@ const TOOLS: { id: Tool; label: string; icon: typeof MousePointer2 }[] = [
 const ALL_STATUSES = Object.keys(statusFill) as PlotStatus[];
 
 function PlotsEditorPage() {
+  const { plots: allPlots } = useData();
+  const search = Route.useSearch();
+  const projectId = search.projectId ?? "PRJ-01";
+  const plots = useMemo(
+    () => allPlots.filter((p) => p.projectId === projectId),
+    [allPlots, projectId],
+  );
   const [tool, setTool] = useState<Tool>("select");
   const [hidden, setHidden] = useState<Set<PlotStatus>>(new Set());
   const [fillOpacity, setFillOpacity] = useState(85);

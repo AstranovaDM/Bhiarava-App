@@ -8,6 +8,10 @@ import { byId, formatINR, type Plot, type PlotStatus } from "@/lib/mock-data";
 import { useData } from "@/lib/store";
 
 export const Route = createFileRoute("/plots/layout")({
+  validateSearch: (search: Record<string, unknown>): { projectId?: string } => {
+    const projectId = typeof search["projectId"] === "string" ? search["projectId"] : undefined;
+    return projectId ? { projectId } : {};
+  },
   head: () => ({
     meta: [
       { title: "Live Plot Layout — Bhairava" },
@@ -30,7 +34,8 @@ const ALL_STATUSES = Object.keys(statusFill) as PlotStatus[];
 
 function PlotsLayoutPage() {
   const { plots, projects, customers, agents } = useData();
-  const [projectId, setProjectId] = useState<string>("PRJ-01");
+  const search = Route.useSearch();
+  const [projectId, setProjectId] = useState<string>(search.projectId ?? "PRJ-01");
   const [hidden, setHidden] = useState<Set<PlotStatus>>(new Set());
   const [showNumbers, setShowNumbers] = useState(true);
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);

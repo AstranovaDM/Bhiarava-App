@@ -1,9 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Minus, Plus, Maximize2 } from "lucide-react";
 import type { Plot, PlotStatus } from "@/lib/mock-data";
-import { plotStatusFill, plotStatusLabel } from "@/lib/plot-status-colors";
+import {
+  plotStatusFill,
+  plotStatusLabel,
+  canonicalPlotStatusFill,
+  canonicalPlotStatusLabel,
+  fillForPlotStatus,
+  labelForPlotStatus,
+} from "@/lib/plot-status-colors";
+import { PLOT_STATUSES } from "@/lib/domain/plot-status";
 import { cn } from "@/lib/utils";
 
+/** Legacy exports for older layout/editor rails (5 statuses). */
 export const statusFill = plotStatusFill;
 export const statusLabel = plotStatusLabel;
 
@@ -124,7 +133,7 @@ export function PlotCanvas({
               <g key={p.id} onPointerEnter={() => setHover(p)} onPointerLeave={() => setHover(null)}>
                 <polygon
                   points={p.points.map((pt) => pt.join(",")).join(" ")}
-                  fill={statusFill[p.status]}
+                  fill={fillForPlotStatus(p.canonicalStatus ?? p.status)}
                   stroke={active ? "var(--primary)" : "var(--surface-lowest)"}
                   strokeWidth={active ? 0.55 : 0.18}
                   className="cursor-pointer transition-[stroke,opacity]"
@@ -151,29 +160,32 @@ export function PlotCanvas({
         </g>
       </svg>
 
-      <div className="glass absolute top-4 left-4 rounded-xl px-3 py-2">
+      <div className="glass absolute top-4 left-4 max-w-[min(100%,28rem)] rounded-xl px-3 py-2">
         <p className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
           Legend
         </p>
         <div className="flex flex-wrap gap-x-3 gap-y-1 pt-1.5">
-          {(Object.keys(statusFill) as PlotStatus[]).map((s) => (
+          {PLOT_STATUSES.map((s) => (
             <span key={s} className="flex items-center gap-1.5 text-[11px]">
-              <span className="h-2.5 w-2.5 rounded-sm" style={{ background: statusFill[s] }} />
-              {statusLabel[s]}
+              <span
+                className="h-2.5 w-2.5 rounded-sm"
+                style={{ background: canonicalPlotStatusFill[s] }}
+              />
+              {canonicalPlotStatusLabel[s]}
             </span>
           ))}
         </div>
       </div>
 
       <div className="glass absolute right-4 bottom-4 flex items-center gap-1 rounded-xl p-1">
-        <button className="rounded-lg p-1.5 hover:bg-surface-c" onClick={() => stepZoom(-1)}>
+        <button type="button" className="rounded-lg p-1.5 hover:bg-surface-c" onClick={() => stepZoom(-1)}>
           <Minus className="h-4 w-4" />
         </button>
         <span className="numeric w-12 text-center text-xs">{Math.round(zoom * 100)}%</span>
-        <button className="rounded-lg p-1.5 hover:bg-surface-c" onClick={() => stepZoom(1)}>
+        <button type="button" className="rounded-lg p-1.5 hover:bg-surface-c" onClick={() => stepZoom(1)}>
           <Plus className="h-4 w-4" />
         </button>
-        <button className="rounded-lg p-1.5 hover:bg-surface-c" onClick={reset}>
+        <button type="button" className="rounded-lg p-1.5 hover:bg-surface-c" onClick={reset} title="Reset zoom">
           <Maximize2 className="h-4 w-4" />
         </button>
       </div>
@@ -182,7 +194,8 @@ export function PlotCanvas({
         <div className="glass pointer-events-none absolute bottom-4 left-4 rounded-xl px-3 py-2 text-xs">
           <p className="numeric font-medium">{hover.number}</p>
           <p className="text-muted-foreground">
-            {hover.areaSqYd} sq.yd · {hover.facing} · {statusLabel[hover.status]}
+            {hover.areaSqYd} sq.yd · {hover.facing} ·{" "}
+            {labelForPlotStatus(hover.canonicalStatus ?? hover.status)}
           </p>
         </div>
       )}

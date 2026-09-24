@@ -22,6 +22,25 @@ export interface Plot {
   widthFt?: number;
   roadWidthFt?: number;
   notes?: string;
+  /** Optional link to project.plotTypes template id */
+  typeId?: string;
+  /** Canonical or legacy corner — normalize via toCanonicalCorner */
+  corner?: string;
+  features?: string[];
+  /** Hard price override (₹/sq yd). When set, rule calc is display-only unless cleared. */
+  rateOverride?: number;
+  rateOverrideReason?: string;
+  /** Append-only status history (ADMIN_MANUAL / flows). */
+  statusHistory?: Array<{
+    fromStatus: string;
+    toStatus: string;
+    reason: string;
+    actorId: string;
+    source: string;
+    createdAt: string;
+  }>;
+  /** Denormalized canonical status for newer writers; readers use toCanonicalPlotStatus. */
+  canonicalStatus?: string;
 }
 
 export type Facing = "North" | "South" | "East" | "West";

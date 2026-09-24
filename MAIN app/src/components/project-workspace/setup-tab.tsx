@@ -279,16 +279,18 @@ export function ProjectSetupTab({
 
           {section === "Location" && (
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Location / locality" error={errors["city"]}>
+              <Field label="Location / locality">
                 <TextInput
                   value={draft.location}
                   onChange={(v) => patch({ location: v })}
+                  readOnly={readOnly}
                 />
               </Field>
-              <Field label="City">
+              <Field label="City" error={errors["city"]}>
                 <TextInput
                   value={draft.city}
                   onChange={(v) => patch({ city: v })}
+                  readOnly={readOnly}
                 />
               </Field>
               <Field label="Village">
@@ -538,10 +540,12 @@ function PhasesEditor({
           <TextInput
             value={ph.name}
             onChange={(v) => {
+              if (readOnly) return;
               const next = [...phases];
               next[i] = { ...ph, name: v };
               onChange(next);
             }}
+            readOnly={readOnly}
           />
           <SelectInput
             value={ph.status}
@@ -606,10 +610,12 @@ function BlocksEditor({
           <TextInput
             value={b.name}
             onChange={(v) => {
+              if (readOnly) return;
               const next = [...blocks];
               next[i] = { ...b, name: v };
               onChange(next);
             }}
+            readOnly={readOnly}
           />
           <SelectInput
             value={(b.phaseId ?? "") as string}
@@ -668,10 +674,15 @@ function PlotTypesEditor({
 }) {
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">
-        Plot types are templates (name/code, area, unit, L/W, category, defaults). Presets 100–300
-        sq yd.
-      </p>
+      <div className="rounded-xl bg-surface-low/80 px-3 py-3 text-sm text-muted-foreground">
+        <p className="font-medium text-foreground">Reusable plot type templates</p>
+        <p className="pt-1">
+          A type like <span className="font-medium text-foreground">150 Sq Yd</span> is a catalog
+          template (default area, dimensions, allowed facings). Individual plots in Layout &amp; Plots
+          can later override dimensions, facing, corner, and features — so not every 150 Sq Yd plot
+          is identical.
+        </p>
+      </div>
       {!readOnly && (
         <div className="flex flex-wrap gap-2">
           {PLOT_TYPE_PRESETS.map((preset) => (
@@ -718,28 +729,42 @@ function PlotTypesEditor({
       )}
       {types.map((t, i) => (
         <div key={t.id} className="grid gap-2 rounded-lg bg-surface-low p-3 sm:grid-cols-4">
-          <TextInput
-            value={t.name}
-            onChange={(v) => {
-              const next = [...types];
-              next[i] = { ...t, name: v };
-              onChange(next);
-            }}
-          />
-          <TextInput
-            value={t.code ?? ""}
-            onChange={(v) => {
-              const next = [...types];
-              next[i] = { ...t, code: v };
-              onChange(next);
-            }}
-          />
-          <NumberInput
-            value={t.areaSqYd}
-            onChange={(v) => { const next = [...types]; next[i] = { ...t, areaSqYd: v };
-              onChange(next);
-            }}
-          />
+          <Field label="Name">
+            <TextInput
+              value={t.name}
+              readOnly={readOnly}
+              onChange={(v) => {
+                if (readOnly) return;
+                const next = [...types];
+                next[i] = { ...t, name: v };
+                onChange(next);
+              }}
+            />
+          </Field>
+          <Field label="Code">
+            <TextInput
+              value={t.code ?? ""}
+              readOnly={readOnly}
+              onChange={(v) => {
+                if (readOnly) return;
+                const next = [...types];
+                next[i] = { ...t, code: v };
+                onChange(next);
+              }}
+            />
+          </Field>
+          <Field label="Area (sq yd)">
+            <NumberInput
+              value={t.areaSqYd}
+              readOnly={readOnly}
+              onChange={(v) => {
+                if (readOnly) return;
+                const next = [...types];
+                next[i] = { ...t, areaSqYd: v };
+                onChange(next);
+              }}
+            />
+          </Field>
           {!readOnly && (
             <Btn variant="ghost" onClick={() => onChange(types.filter((x) => x.id !== t.id))}>
               Remove
@@ -845,7 +870,45 @@ function PricingEditor({
           />
         </Field>
       </div>
-    </div>
+          <div className="rounded-xl border border-dashed border-outline-variant/40 bg-surface-low/60 px-4 py-3">
+        <p className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+          Sample final calculated rate
+        </p>
+        <p className="pt-1 text-sm text-muted-foreground">
+          Base + facing + corner + road/feature premiums. No unrestricted manual plot override in P1
+          — layout-level override ships later with permission, reason, and audit.
+        </p>
+        <ul className="mt-3 space-y-1 text-sm">
+          <li className="flex justify-between gap-4">
+            <span>Base rate</span>
+            <span className="numeric font-medium">₹{(pricing.baseRatePerSqYd ?? 0).toLocaleString("en-IN")}/sq yd</span>
+          </li>
+          <li className="flex justify-between gap-4">
+            <span>Facing premium (East sample)</span>
+            <span className="numeric">+₹{(pricing.facingPremium?.East ?? 0).toLocaleString("en-IN")}</span>
+          </li>
+          <li className="flex justify-between gap-4">
+            <span>Corner premium</span>
+            <span className="numeric">+₹{(pricing.cornerPremium ?? 0).toLocaleString("en-IN")}</span>
+          </li>
+          <li className="flex justify-between gap-4">
+            <span>Main road / road premium</span>
+            <span className="numeric">+₹{(pricing.featurePremium?.["Main road facing"] ?? 0).toLocaleString("en-IN")}</span>
+          </li>
+          <li className="flex justify-between gap-4 border-t border-outline-variant/30 pt-2 font-medium text-foreground">
+            <span>Final calculated rate (sample)</span>
+            <span className="numeric text-base">
+              ₹{(
+                (pricing.baseRatePerSqYd ?? 0) +
+                (pricing.facingPremium?.East ?? 0) +
+                (pricing.cornerPremium ?? 0) +
+                (pricing.featurePremium?.["Main road facing"] ?? 0)
+              ).toLocaleString("en-IN")}/sq yd
+            </span>
+          </li>
+        </ul>
+      </div>
+</div>
   );
 }
 
@@ -894,48 +957,73 @@ function AmenitiesEditor({
       {amenities.map((a, i) => (
         <div key={a.id} className="space-y-2 rounded-lg bg-surface-low p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="font-medium">{a.name}</p>
+            <div>
+              <p className="font-medium">{a.name}</p>
+              <p className="text-xs text-muted-foreground">
+                Category: {a.category ?? a.group ?? "Uncategorized"}
+              </p>
+            </div>
             <Chip>{a.status}</Chip>
           </div>
-          <TextareaInput
-            value={a.description ?? ""}
-            onChange={(v) => {
-              const next = [...amenities];
-              next[i] = { ...a, description: v };
-              onChange(next);
-            }}
-          />
+          <Field label="Description">
+            <TextareaInput
+              value={a.description ?? ""}
+              readOnly={readOnly}
+              onChange={(v) => {
+                if (readOnly) return;
+                const next = [...amenities];
+                next[i] = { ...a, description: v };
+                onChange(next);
+              }}
+            />
+          </Field>
           <div className="grid gap-2 sm:grid-cols-3">
-            <SelectInput
-              value={a.status}
-              onChange={(v) => {
-                if (readOnly) return;
-                const next = [...amenities];
-                next[i] = { ...a, status: v as ProjectAmenity["status"] };
-                onChange(next);
-              }}
-              options={["Planned", "In progress", "Completed"] as const}
-            />
-            <NumberInput
-              value={a.completion}
-              onChange={(v) => { const next = [...amenities]; next[i] = { ...a, completion: v };
-                onChange(next);
-              }}
-            />
-            <SelectInput
-              value={a.visibility ?? "customer"}
-              onChange={(v) => {
-                if (readOnly) return;
-                const next = [...amenities];
-                next[i] = { ...a, visibility: v as NonNullable<ProjectAmenity["visibility"]> };
-                onChange(next);
-              }}
-              options={[
-                { value: "internal", label: "Internal" },
-                { value: "agent", label: "Agent" },
-                { value: "customer", label: "Customer" },
-              ]}
-            />
+            <Field label="Status">
+              <SelectInput
+                value={a.status}
+                disabled={readOnly}
+                onChange={(v) => {
+                  if (readOnly) return;
+                  const next = [...amenities];
+                  next[i] = { ...a, status: v as ProjectAmenity["status"] };
+                  onChange(next);
+                }}
+                options={["Planned", "In progress", "Completed"] as const}
+              />
+            </Field>
+            <Field label="Completion %">
+              <NumberInput
+                value={a.completion}
+                readOnly={readOnly}
+                onChange={(v) => {
+                  if (readOnly) return;
+                  const next = [...amenities];
+                  next[i] = { ...a, completion: v };
+                  onChange(next);
+                }}
+              />
+            </Field>
+            <Field label="Visibility">
+              <SelectInput
+                value={a.visibility ?? "customer"}
+                disabled={readOnly}
+                onChange={(v) => {
+                  if (readOnly) return;
+                  const next = [...amenities];
+                  next[i] = { ...a, visibility: v as NonNullable<ProjectAmenity["visibility"]> };
+                  onChange(next);
+                }}
+                options={[
+                  { value: "internal", label: "Internal" },
+                  { value: "agent", label: "Agent" },
+                  { value: "customer", label: "Customer" },
+                ]}
+              />
+            </Field>
+          </div>
+          <div className="flex items-center gap-3 rounded-lg border border-dashed border-outline-variant/40 px-3 py-2 text-xs text-muted-foreground">
+            <span className="font-medium text-foreground/80">Media placeholder</span>
+            <span>{a.photos ?? 0} photo(s) · upload in Documents (P3)</span>
           </div>
           {!readOnly && (
             <Btn variant="ghost" onClick={() => onChange(amenities.filter((x) => x.id !== a.id))}>

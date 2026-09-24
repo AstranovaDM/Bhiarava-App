@@ -6,6 +6,7 @@ import { ScrollTabs } from "@/components/scroll-tabs";
 import { ProjectEditor } from "@/components/record-editors";
 import { ProjectOverviewTab } from "@/components/project-workspace/overview-tab";
 import { ProjectSetupTab } from "@/components/project-workspace/setup-tab";
+import { ProjectLayoutTab } from "@/components/project-workspace/layout-tab";
 import { ComingSoonPanel } from "@/components/project-workspace/coming-soon-panel";
 import { byId, projects as seedProjects } from "@/lib/mock-data";
 import { useData } from "@/lib/store";
@@ -16,7 +17,7 @@ import {
   projectLifecycleOf,
 } from "@/lib/domain/overview-metrics";
 import { LIFECYCLE_LABEL } from "@/lib/domain/lifecycle";
-import { setupAccessForRole } from "@/lib/domain/project-permissions";
+import { setupAccessForRole, layoutAccessForRole } from "@/lib/domain/project-permissions";
 
 const TABS = [
   { key: "overview", label: "Overview" },
@@ -70,6 +71,7 @@ function ProjectWorkspace() {
   const project = byId(projectList, projectId);
   const session = getSession();
   const setupAccess = setupAccessForRole(session?.role);
+  const layoutAccess = layoutAccessForRole(session?.role);
 
   if (!project) {
     return (
@@ -215,9 +217,10 @@ function ProjectWorkspace() {
           />
         )}
         {tab === "layout" && (
-          <ComingSoonPanel
-            title="Layout & Plots"
-            description="Inventory OS with polygon↔plot linking ships in P2. Use Add plot / Live layout for now."
+          <ProjectLayoutTab
+            project={project}
+            plots={projectPlots}
+            access={layoutAccess}
           />
         )}
         {tab === "sales" && (
