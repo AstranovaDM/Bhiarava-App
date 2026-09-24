@@ -9,3 +9,11 @@ dist/
 MAIN-agent-expo/dist-web/
 MAIN-customer-expo/dist-web/
 
+
+# Production platform
+packages/database/.env
+services/api/.env
+services/worker/.env
+**/dist/
+packages/**/dist/
+services/**/dist/

@@ -1,0 +1,9 @@
+{
+  "name": "@bhairava/agent-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Agent Expo — production target (MAIN-agent-expo is client-test SoT)",
+  "scripts": {
+    "stub": "node -e \"console.log(\\'@bhairava/agent-mobile stub — Wave 2 migration\\')\""
+  }
+}

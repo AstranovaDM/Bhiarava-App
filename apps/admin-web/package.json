@@ -1,0 +1,9 @@
+{
+  "name": "@bhairava/admin-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Vite/TanStack admin — production target (MAIN app is client-test SoT)",
+  "scripts": {
+    "stub": "node -e \"console.log(\\'@bhairava/admin-web stub — Wave 2 migration\\')\""
+  }
+}

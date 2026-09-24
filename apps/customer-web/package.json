@@ -1,0 +1,9 @@
+{
+  "name": "@bhairava/customer-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Customer web — production target (MAIN-customer is client-test SoT)",
+  "scripts": {
+    "stub": "node -e \"console.log(\\'@bhairava/customer-web stub — Wave 2 migration\\')\""
+  }
+}

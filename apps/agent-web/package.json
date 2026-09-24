@@ -1,0 +1,9 @@
+{
+  "name": "@bhairava/agent-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Agent web — production target (MAIN-agent is client-test SoT)",
+  "scripts": {
+    "stub": "node -e \"console.log(\\'@bhairava/agent-web stub — Wave 2 migration\\')\""
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "@bhairava/customer-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Customer Expo — production target (MAIN-customer-expo is client-test SoT)",
+  "scripts": {
+    "stub": "node -e \"console.log(\\'@bhairava/customer-mobile stub — Wave 2 migration\\')\""
+  }
+}
