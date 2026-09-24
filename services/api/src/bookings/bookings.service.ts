@@ -27,6 +27,34 @@ export class BookingsService {
     private readonly audit: AuditService,
   ) {}
 
+  
+  async list(actor: AuthPrincipal, q: { projectId?: string; customerId?: string } = {}) {
+    const rows = await this.prisma.booking.findMany({
+      where: {
+        organizationId: actor.organizationId,
+        ...(q.projectId ? { projectId: q.projectId } : {}),
+        ...(q.customerId ? { customerId: q.customerId } : {}),
+        ...(actor.roleCode === 'CUSTOMER'
+          ? { customer: { userId: actor.userId } }
+          : {}),
+        ...(actor.roleCode === 'AGENT'
+          ? { agent: { userId: actor.userId } }
+          : {}),
+      },
+      orderBy: { bookedAt: 'desc' },
+      take: 200,
+      include: {
+        plot: { select: { id: true, number: true, status: true } },
+        customer: { select: { id: true, name: true, phone: true } },
+      },
+    });
+    return rows.map((b) => ({
+      ...b,
+      agreementValuePaise: b.agreementValuePaise?.toString?.() ?? String(b.agreementValuePaise),
+      advancePaise: b.advancePaise?.toString?.() ?? String(b.advancePaise ?? 0),
+    }));
+  }
+
   async book(actor: AuthPrincipal, input: CreateBookingInput) {
     const agreementValuePaise = BigInt(input.agreementValuePaise);
     const advancePaise = BigInt(input.advancePaise ?? 0);

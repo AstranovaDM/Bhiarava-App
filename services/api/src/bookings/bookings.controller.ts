@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { IsOptional, IsString } from 'class-validator';
 import { BookingsService } from './bookings.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -20,6 +20,16 @@ class CreateBookingDto {
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class BookingsController {
   constructor(private readonly bookings: BookingsService) {}
+
+  @Get()
+  @RequirePermissions('projects.view')
+  list(
+    @CurrentUser() user: AuthPrincipal,
+    @Query('projectId') projectId?: string,
+    @Query('customerId') customerId?: string,
+  ) {
+    return this.bookings.list(user, { projectId, customerId });
+  }
 
   @Post()
   @RequirePermissions('sales.bookings.manage')

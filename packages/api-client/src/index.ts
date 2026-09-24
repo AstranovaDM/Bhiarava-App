@@ -150,11 +150,25 @@ export function createApiClient(opts: ApiClientOptions) {
         request<VisitSummary>('PATCH', '/api/visits/' + id + '/status', { status, notes }),
     },
     reservations: {
+      list: (q?: { projectId?: string; state?: string }) => {
+        const params = new URLSearchParams();
+        if (q?.projectId) params.set('projectId', q.projectId);
+        if (q?.state) params.set('state', q.state);
+        const qs = params.toString();
+        return request<ReservationSummary[]>('GET', '/api/reservations' + (qs ? '?' + qs : ''));
+      },
       create: (body: {
         plotId: string; customerId: string; agentId?: string; leadId?: string; holdHours?: number; notes?: string;
       }) => request<ReservationSummary>('POST', '/api/reservations', body),
     },
     bookings: {
+      list: (q?: { projectId?: string; customerId?: string }) => {
+        const params = new URLSearchParams();
+        if (q?.projectId) params.set('projectId', q.projectId);
+        if (q?.customerId) params.set('customerId', q.customerId);
+        const qs = params.toString();
+        return request<BookingSummary[]>('GET', '/api/bookings' + (qs ? '?' + qs : ''));
+      },
       create: (body: {
         plotId: string; customerId: string; agreementValuePaise: string;
         reservationId?: string; agentId?: string; advancePaise?: string; notes?: string;
@@ -198,6 +212,39 @@ export function createApiClient(opts: ApiClientOptions) {
         const qs = params.toString();
         return request<Array<Record<string, unknown>>>('GET', '/api/audit' + (qs ? '?' + qs : ''));
       },
+    },
+    agents: {
+      list: () => request<Array<Record<string, unknown>>>('GET', '/api/agents'),
+    },
+    receipts: {
+      list: () => request<Array<Record<string, unknown>>>('GET', '/api/receipts'),
+    },
+    commissions: {
+      list: () => request<Array<Record<string, unknown>>>('GET', '/api/commissions'),
+    },
+    paymentSchedules: {
+      list: (bookingId?: string) =>
+        request<Array<Record<string, unknown>>>(
+          'GET',
+          '/api/payment-schedules' + (bookingId ? '?bookingId=' + bookingId : ''),
+        ),
+    },
+    registrations: {
+      list: () => request<Array<Record<string, unknown>>>('GET', '/api/registrations'),
+    },
+    resales: {
+      list: () => request<Array<Record<string, unknown>>>('GET', '/api/resales'),
+    },
+    users: {
+      list: () => request<Array<Record<string, unknown>>>('GET', '/api/users'),
+    },
+    companySettings: {
+      get: () => request<Record<string, unknown>>('GET', '/api/company-settings'),
+      update: (settingsJson: Record<string, unknown>) =>
+        request<Record<string, unknown>>('PUT', '/api/company-settings', { settingsJson }),
+    },
+    reports: {
+      summary: () => request<Record<string, unknown>>('GET', '/api/reports/summary'),
     },
     notifications: {
       list: () => request<Array<Record<string, unknown>>>('GET', '/api/notifications'),

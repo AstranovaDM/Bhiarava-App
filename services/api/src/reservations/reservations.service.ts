@@ -122,6 +122,23 @@ export class ReservationsService {
     return result;
   }
 
+  
+  async list(actor: AuthPrincipal, q: { projectId?: string; state?: string } = {}) {
+    return this.prisma.reservation.findMany({
+      where: {
+        organizationId: actor.organizationId,
+        ...(q.projectId ? { projectId: q.projectId } : {}),
+        ...(q.state ? { state: q.state as any } : {}),
+      },
+      orderBy: { reservedAt: 'desc' },
+      take: 200,
+      include: {
+        plot: { select: { id: true, number: true, status: true } },
+        customer: { select: { id: true, name: true, phone: true } },
+      },
+    });
+  }
+
   async releaseExpired(limit = 50) {
     const now = new Date();
     const due = await this.prisma.reservation.findMany({

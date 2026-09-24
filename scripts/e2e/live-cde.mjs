@@ -49,7 +49,8 @@ async function main() {
       req('/reservations', { method: 'POST', headers: auth, body: JSON.stringify({ plotId, customerId }) }),
     ]);
     const st = [a.status, b.status].sort((x, y) => x - y);
-    step('double-reserve-one-wins', st.filter((s) => s === 200 || s === 201).length === 1 && st.some((s) => s >= 400), `statuses=${st.join(',')}`);
+    step('double-reserve-one-wins', st.filter((s) => s === 200 || s === 201).length === 1 && st.includes(409), `statuses=${st.join(',')}`);
+    step('double-reserve-loser-is-409', st.includes(409) && st.filter((s) => s === 200 || s === 201).length === 1, `statuses=${st.join(',')}`);
 
     const plot2 = available[1].id;
     const book = await req('/bookings', { method: 'POST', headers: auth, body: JSON.stringify({ plotId: plot2, customerId, agreementValuePaise: '100000000', advancePaise: '1000000' }) });

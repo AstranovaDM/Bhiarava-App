@@ -21,6 +21,7 @@ import { CustomersModule } from './customers/customers.module';
 import { LayoutsModule } from './layouts/layouts.module';
 import { ProjectsModule } from './projects/projects.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { OpsModule } from './ops/ops.module';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
@@ -50,6 +51,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     LayoutsModule,
     ProjectsModule,
     NotificationsModule,
+    OpsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
