@@ -1,4 +1,4 @@
-# Bhairava Real Estate Platform â€” Three-App Architecture
+# Bhairava Real Estate Platform Ã¢â‚¬â€ Three-App Architecture
 
 **Status:** LOCKED (2026-09-24)  
 **Scope:** Core application architecture for MAIN / MAIN-agent / MAIN-customer  
@@ -86,7 +86,7 @@ bhairava-real-estate/
 
 ---
 
-## 4. MAIN â€” Admin OS
+## 4. MAIN Ã¢â‚¬â€ Admin OS
 
 Complete Bhairava operational system.
 
@@ -135,8 +135,8 @@ MANAGEMENT
 
 COMPANY
   Company Settings
-  Billing              â€” Founder only
-  Danger Zone          â€” Founder only
+  Billing              Ã¢â‚¬â€ Founder only
+  Danger Zone          Ã¢â‚¬â€ Founder only
 ```
 
 ### Admin capabilities (full project management)
@@ -154,7 +154,7 @@ Admin can:
 
 ---
 
-## 5. MAIN-agent â€” Sales Agent App
+## 5. MAIN-agent Ã¢â‚¬â€ Sales Agent App
 
 **Not an Admin-lite app.** Focused sales workspace.
 
@@ -219,20 +219,20 @@ A-103 BOOKED
 A-104 REGISTERED
 ```
 
-They must **not** automatically see another agentâ€™s customer PII (name, mobile, payments, address) unless that customer is assigned to the logged-in agent.
+They must **not** automatically see another agentÃ¢â‚¬â„¢s customer PII (name, mobile, payments, address) unless that customer is assigned to the logged-in agent.
 
 ### Leads
 
 Only assigned or self-created leads.
 
-Stages: New â†’ Contacted â†’ Qualified â†’ Site Visit Planned â†’ Site Visit Completed â†’ Interested â†’ Negotiation â†’ Reservation â†’ Booked â†’ Lost
+Stages: New Ã¢â€ â€™ Contacted Ã¢â€ â€™ Qualified Ã¢â€ â€™ Site Visit Planned Ã¢â€ â€™ Site Visit Completed Ã¢â€ â€™ Interested Ã¢â€ â€™ Negotiation Ã¢â€ â€™ Reservation Ã¢â€ â€™ Booked Ã¢â€ â€™ Lost
 
 ### Customer onboarding
 
-- Convert lead â†’ customer
+- Convert lead Ã¢â€ â€™ customer
 - Create / update assigned customer profile, KYC, preferences, notes, documents
 - **Cannot delete** customers
-- Incorrect create â†’ Mark Duplicate / Request Correction â†’ Admin Review â†’ Merge / Archive
+- Incorrect create Ã¢â€ â€™ Mark Duplicate / Request Correction Ã¢â€ â€™ Admin Review Ã¢â€ â€™ Merge / Archive
 
 ### Site Visits
 
@@ -240,11 +240,11 @@ Schedule visit; select customer + project + date/time; interested plots; notes; 
 
 ### Reservations
 
-Reserve available plot for own customer. View own active / expiring / converted / expired. **Cannot override** another agentâ€™s reservation.
+Reserve available plot for own customer. View own active / expiring / converted / expired. **Cannot override** another agentÃ¢â‚¬â„¢s reservation.
 
 ### Bookings
 
-Create for own customer / reservation / available plot. View own bookings. **Cannot delete** confirmed bookings. Cancellation = Agent requests â†’ Admin approves.
+Create for own customer / reservation / available plot. View own bookings. **Cannot delete** confirmed bookings. Cancellation = Agent requests Ã¢â€ â€™ Admin approves.
 
 ### Collections
 
@@ -266,12 +266,12 @@ CUSTOMER_PROFILE_RELATED
 
 ---
 
-## 6. MAIN-customer â€” Customer App
+## 6. MAIN-customer Ã¢â‚¬â€ Customer App
 
 Two purposes only:
 
-1. **Explore** â€” discover Bhairava projects and plots  
-2. **My Account** â€” own property and financial information only
+1. **Explore** Ã¢â‚¬â€ discover Bhairava projects and plots  
+2. **My Account** Ã¢â‚¬â€ own property and financial information only
 
 ### Navigation
 
@@ -303,7 +303,7 @@ Active/public projects with overview, location, images, amenities, public pricin
 
 ### Plot Availability
 
-Public plot facts for AVAILABLE plots. RESERVED / BOOKED show **status only** â€” never who.
+Public plot facts for AVAILABLE plots. RESERVED / BOOKED show **status only** Ã¢â‚¬â€ never who.
 
 ### Customer privacy (strict)
 
@@ -336,7 +336,7 @@ Example: `GET /plots/:id`
 | Role | Payload |
 |------|---------|
 | Admin | Complete internal record |
-| Agent | Sales information; hide other agentsâ€™ customer PII |
+| Agent | Sales information; hide other agentsÃ¢â‚¬â„¢ customer PII |
 | Customer | Public plot fields only |
 
 Same pattern for `GET /projects` and related resources.
@@ -354,9 +354,9 @@ Same pattern for `GET /projects` and related resources.
 ## 9. Next steps after this doc
 
 1. ~~Map MAIN Admin screen inventory~~ (done)  
-2. ~~Lock Project Portfolio OS product calls~~ (done â€” see `2026-09-24-main-project-detail-portfolio-os.md`)  
-3. Permission matrix for `admin.projects.detail`  
-4. Implement P0â€“P1 (Overview + Setup) in MAIN  
+2. ~~Lock Project Portfolio OS product calls~~ (done Ã¢â‚¬â€ see `2026-09-24-main-project-detail-portfolio-os.md`)  
+3. ~~Permission matrix for `admin.projects.detail`~~ (done — `2026-09-24-main-project-detail-permission-matrix.md`)  
+4. Implement P0Ã¢â‚¬â€œP1 (Overview + Setup) in MAIN  
 5. Scaffold monorepo folders + shared packages when copy/slim begins  
 
 ---
@@ -376,6 +376,6 @@ Locked there (do not diverge):
 - `agentVisible` / `customerListed` are **publish flags**, not lifecycle statuses.
 - Facing: North/South/East/West. Corner: NONE/NE/NW/SE/SW.
 - Plot types are templates; per-plot overrides need permission, reason, audit.
-- Document vault: `INTERNAL | AGENT_VISIBLE | CUSTOMER_PROFILE_RELATED` â€” MAIN-customer never browses the project document repository.
+- Document vault: `INTERNAL | AGENT_VISIBLE | CUSTOMER_PROFILE_RELATED` Ã¢â‚¬â€ MAIN-customer never browses the project document repository.
 - MAIN-agent: read assigned project sales data; cannot edit project master data.
 - No hard-delete of project operational history after bookings/payments.
