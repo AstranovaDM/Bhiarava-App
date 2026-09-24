@@ -43,6 +43,14 @@ import {
   applyReservationExpiry,
   type CancelRequest,
 } from "@/lib/domain/sales";
+import type {
+  CommissionRecord,
+  CommissionRule,
+  FinancePayment,
+  PaymentAdjustment,
+  PaymentScheduleItem,
+} from "@/lib/domain/finance";
+import { buildFinanceDemoSeed, mergeFinanceSeed } from "@/lib/domain/finance-seed";
 
 const KEY = "bhairava.admin.v3";
 
@@ -57,6 +65,12 @@ interface Persisted {
   extraReservations?: Reservation[];
   extraVisits?: SiteVisit[];
   cancelRequests?: CancelRequest[];
+  financePayments?: FinancePayment[];
+  paymentSchedules?: PaymentScheduleItem[];
+  paymentAdjustments?: PaymentAdjustment[];
+  commissions?: CommissionRecord[];
+  commissionRules?: CommissionRule[];
+  financeSeededProjects?: string[];
 }
 
 interface Data {
@@ -69,6 +83,11 @@ interface Data {
   reservations: Reservation[];
   siteVisits: SiteVisit[];
   cancelRequests: CancelRequest[];
+  financePayments: FinancePayment[];
+  paymentSchedules: PaymentScheduleItem[];
+  paymentAdjustments: PaymentAdjustment[];
+  commissions: CommissionRecord[];
+  commissionRules: CommissionRule[];
 }
 
 interface Ctx extends Data {
@@ -90,6 +109,12 @@ interface Ctx extends Data {
   saveSiteVisit: (v: SiteVisit) => void;
   removeSiteVisit: (id: string) => void;
   saveCancelRequest: (c: CancelRequest) => void;
+  saveFinancePayment: (p: FinancePayment) => void;
+  savePaymentSchedule: (item: PaymentScheduleItem) => void;
+  savePaymentAdjustment: (a: PaymentAdjustment) => void;
+  saveCommission: (c: CommissionRecord) => void;
+  saveCommissionRule: (r: CommissionRule) => void;
+  ensureFinanceSeed: (projectId: string) => void;
   /** Re-evaluate reservation expiry deterministically (load/action). */
   refreshReservationExpiry: () => void;
   reset: () => void;
@@ -137,6 +162,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [extraReservations, setExtraReservations] = useState<Reservation[]>([]);
   const [extraVisits, setExtraVisits] = useState<SiteVisit[]>([]);
   const [cancelRequests, setCancelRequests] = useState<CancelRequest[]>([]);
+  const [financePayments, setFinancePayments] = useState<FinancePayment[]>([]);
+  const [paymentSchedules, setPaymentSchedules] = useState<PaymentScheduleItem[]>([]);
+  const [paymentAdjustments, setPaymentAdjustments] = useState<PaymentAdjustment[]>([]);
+  const [commissions, setCommissions] = useState<CommissionRecord[]>([]);
+  const [commissionRules, setCommissionRules] = useState<CommissionRule[]>([]);
+  const [financeSeededProjects, setFinanceSeededProjects] = useState<string[]>([]);
 
   useEffect(() => {
     try {
@@ -170,6 +201,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }
       if (parsed.extraVisits) setExtraVisits(parsed.extraVisits);
       if (parsed.cancelRequests) setCancelRequests(parsed.cancelRequests);
+      if (parsed.financePayments) setFinancePayments(parsed.financePayments);
+      if (parsed.paymentSchedules) setPaymentSchedules(parsed.paymentSchedules);
+      if (parsed.paymentAdjustments) setPaymentAdjustments(parsed.paymentAdjustments);
+      if (parsed.commissions) setCommissions(parsed.commissions);
+      if (parsed.commissionRules) setCommissionRules(parsed.commissionRules);
+      if (parsed.financeSeededProjects) setFinanceSeededProjects(parsed.financeSeededProjects);
     } catch {
       /* ignore corrupt storage — keep seed data */
     }
@@ -186,6 +223,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
       extraReservations: Reservation[];
       extraVisits: SiteVisit[];
       cancelRequests: CancelRequest[];
+      financePayments: FinancePayment[];
+      paymentSchedules: PaymentScheduleItem[];
+      paymentAdjustments: PaymentAdjustment[];
+      commissions: CommissionRecord[];
+      commissionRules: CommissionRule[];
+      financeSeededProjects: string[];
     }) => {
       try {
         const payload: Persisted = {
@@ -204,6 +247,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
           extraReservations: next.extraReservations,
           extraVisits: next.extraVisits,
           cancelRequests: next.cancelRequests,
+          financePayments: next.financePayments,
+          paymentSchedules: next.paymentSchedules,
+          paymentAdjustments: next.paymentAdjustments,
+          commissions: next.commissions,
+          commissionRules: next.commissionRules,
+          financeSeededProjects: next.financeSeededProjects,
         };
         localStorage.setItem(KEY, JSON.stringify(payload));
       } catch {
@@ -225,6 +274,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
         extraReservations: Reservation[];
         extraVisits: SiteVisit[];
         cancelRequests: CancelRequest[];
+        financePayments: FinancePayment[];
+        paymentSchedules: PaymentScheduleItem[];
+        paymentAdjustments: PaymentAdjustment[];
+        commissions: CommissionRecord[];
+        commissionRules: CommissionRule[];
+        financeSeededProjects: string[];
       }>,
     ) => {
       const next = {
@@ -237,10 +292,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
         extraReservations: patch.extraReservations ?? extraReservations,
         extraVisits: patch.extraVisits ?? extraVisits,
         cancelRequests: patch.cancelRequests ?? cancelRequests,
+        financePayments: patch.financePayments ?? financePayments,
+        paymentSchedules: patch.paymentSchedules ?? paymentSchedules,
+        paymentAdjustments: patch.paymentAdjustments ?? paymentAdjustments,
+        commissions: patch.commissions ?? commissions,
+        commissionRules: patch.commissionRules ?? commissionRules,
+        financeSeededProjects: patch.financeSeededProjects ?? financeSeededProjects,
       };
       persist(next);
     },
-    [core, extraPlots, extraBookings, extraReservations, extraVisits, cancelRequests, persist],
+    [core, extraPlots, extraBookings, extraReservations, extraVisits, cancelRequests, financePayments, paymentSchedules, paymentAdjustments, commissions, commissionRules, financeSeededProjects, persist],
   );
 
   const upsertCore = useCallback(
@@ -287,6 +348,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
       reservations: applyReservationExpiry(mergeById(seedReservations, extraReservations)),
       siteVisits: mergeById(seedSiteVisits, extraVisits),
       cancelRequests,
+      financePayments,
+      paymentSchedules,
+      paymentAdjustments,
+      commissions,
+      commissionRules,
       saveProject: (p) =>
         upsertCore(
           "projects",
@@ -370,6 +436,71 @@ export function DataProvider({ children }: { children: ReactNode }) {
           return next;
         });
       },
+      saveFinancePayment: (p) => {
+        setFinancePayments((prev) => {
+          const next = upsertExtra(prev, p);
+          snapshot({ financePayments: next });
+          return next;
+        });
+      },
+      savePaymentSchedule: (item) => {
+        setPaymentSchedules((prev) => {
+          const next = upsertExtra(prev, item);
+          snapshot({ paymentSchedules: next });
+          return next;
+        });
+      },
+      savePaymentAdjustment: (a) => {
+        setPaymentAdjustments((prev) => {
+          const next = upsertExtra(prev, a);
+          snapshot({ paymentAdjustments: next });
+          return next;
+        });
+      },
+      saveCommission: (c) => {
+        setCommissions((prev) => {
+          const next = upsertExtra(prev, c);
+          snapshot({ commissions: next });
+          return next;
+        });
+      },
+      saveCommissionRule: (r) => {
+        setCommissionRules((prev) => {
+          const next = upsertExtra(prev, r);
+          snapshot({ commissionRules: next });
+          return next;
+        });
+      },
+      ensureFinanceSeed: (projectId) => {
+        if (financeSeededProjects.includes(projectId)) return;
+        const bookingsNow = mergeById(seedBookings, extraBookings);
+        const demo = buildFinanceDemoSeed(bookingsNow, projectId);
+        const merged = mergeFinanceSeed(
+          {
+            schedules: paymentSchedules,
+            payments: financePayments,
+            adjustments: paymentAdjustments,
+            commissions,
+            rules: commissionRules,
+          },
+          demo,
+        );
+        setPaymentSchedules(merged.schedules);
+        setFinancePayments(merged.payments);
+        setPaymentAdjustments(merged.adjustments);
+        setCommissions(merged.commissions);
+        setCommissionRules(merged.rules);
+        const nextSeeded = [...financeSeededProjects, projectId];
+        setFinanceSeededProjects(nextSeeded);
+        snapshot({
+          paymentSchedules: merged.schedules,
+          financePayments: merged.payments,
+          paymentAdjustments: merged.adjustments,
+          commissions: merged.commissions,
+          commissionRules: merged.rules,
+          financeSeededProjects: nextSeeded,
+        });
+      },
       refreshReservationExpiry: () => {
         setExtraReservations((prev) => {
           const next = applyReservationExpiry(prev);
@@ -394,6 +525,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setExtraReservations([]);
         setExtraVisits([]);
         setCancelRequests([]);
+        setFinancePayments([]);
+        setPaymentSchedules([]);
+        setPaymentAdjustments([]);
+        setCommissions([]);
+        setCommissionRules([]);
+        setFinanceSeededProjects([]);
       },
       nextId: (prefix, list) => {
         let max = 0;
@@ -415,6 +552,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
       extraReservations,
       extraVisits,
       cancelRequests,
+      financePayments,
+      paymentSchedules,
+      paymentAdjustments,
+      commissions,
+      commissionRules,
+      financeSeededProjects,
       upsertCore,
       removeCore,
       upsertExtra,
