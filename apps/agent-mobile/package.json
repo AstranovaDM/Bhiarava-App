@@ -2,8 +2,25 @@
   "name": "@bhairava/agent-mobile",
   "version": "0.1.0",
   "private": true,
-  "description": "Agent Expo — production target (MAIN-agent-expo is client-test SoT)",
+  "main": "index.js",
   "scripts": {
-    "stub": "node -e \"console.log(\\'@bhairava/agent-mobile stub — Wave 2 migration\\')\""
+    "start": "expo start",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@bhairava/api-client": "*",
+    "@react-navigation/bottom-tabs": "^7.3.10",
+    "@react-navigation/native": "^7.1.6",
+    "expo": "~53.0.0",
+    "expo-secure-store": "~14.2.3",
+    "expo-status-bar": "~2.2.3",
+    "react": "19.0.0",
+    "react-native": "0.79.2",
+    "react-native-safe-area-context": "5.4.0",
+    "react-native-screens": "~4.11.1"
+  },
+  "devDependencies": {
+    "@types/react": "~19.0.10",
+    "typescript": "~5.8.3"
   }
 }
