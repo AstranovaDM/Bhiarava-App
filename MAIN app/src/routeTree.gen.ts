@@ -44,7 +44,9 @@ import { Route as ReportsInventoryRouteImport } from './routes/reports.inventory
 import { Route as ReportsSalesRouteImport } from './routes/reports.sales'
 import { Route as ReservationsIndexRouteImport } from './routes/reservations.index'
 import { Route as SettingsAuditRouteImport } from './routes/settings.audit'
+import { Route as SettingsBillingRouteImport } from './routes/settings.billing'
 import { Route as SettingsCompanyRouteImport } from './routes/settings.company'
+import { Route as SettingsDangerRouteImport } from './routes/settings.danger'
 import { Route as SettingsUsersRouteImport } from './routes/settings.users'
 import { Route as SiteVisitsIndexRouteImport } from './routes/site-visits.index'
 import { Route as SiteVisitsNewRouteImport } from './routes/site-visits.new'
@@ -224,9 +226,19 @@ const SettingsAuditRoute = SettingsAuditRouteImport.update({
   path: '/settings/audit',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsBillingRoute = SettingsBillingRouteImport.update({
+  id: '/settings/billing',
+  path: '/settings/billing',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsCompanyRoute = SettingsCompanyRouteImport.update({
   id: '/settings/company',
   path: '/settings/company',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsDangerRoute = SettingsDangerRouteImport.update({
+  id: '/settings/danger',
+  path: '/settings/danger',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsUsersRoute = SettingsUsersRouteImport.update({
@@ -274,7 +286,9 @@ export interface FileRoutesByFullPath {
   '/reports/inventory': typeof ReportsInventoryRoute
   '/reports/sales': typeof ReportsSalesRoute
   '/settings/audit': typeof SettingsAuditRoute
+  '/settings/billing': typeof SettingsBillingRoute
   '/settings/company': typeof SettingsCompanyRoute
+  '/settings/danger': typeof SettingsDangerRoute
   '/settings/users': typeof SettingsUsersRoute
   '/site-visits/new': typeof SiteVisitsNewRoute
   '/agents/': typeof AgentsIndexRoute
@@ -315,7 +329,9 @@ export interface FileRoutesByTo {
   '/reports/inventory': typeof ReportsInventoryRoute
   '/reports/sales': typeof ReportsSalesRoute
   '/settings/audit': typeof SettingsAuditRoute
+  '/settings/billing': typeof SettingsBillingRoute
   '/settings/company': typeof SettingsCompanyRoute
+  '/settings/danger': typeof SettingsDangerRoute
   '/settings/users': typeof SettingsUsersRoute
   '/site-visits/new': typeof SiteVisitsNewRoute
   '/agents': typeof AgentsIndexRoute
@@ -357,7 +373,9 @@ export interface FileRoutesById {
   '/reports/inventory': typeof ReportsInventoryRoute
   '/reports/sales': typeof ReportsSalesRoute
   '/settings/audit': typeof SettingsAuditRoute
+  '/settings/billing': typeof SettingsBillingRoute
   '/settings/company': typeof SettingsCompanyRoute
+  '/settings/danger': typeof SettingsDangerRoute
   '/settings/users': typeof SettingsUsersRoute
   '/site-visits/new': typeof SiteVisitsNewRoute
   '/agents/': typeof AgentsIndexRoute
@@ -400,7 +418,9 @@ export interface FileRouteTypes {
     | '/reports/inventory'
     | '/reports/sales'
     | '/settings/audit'
+    | '/settings/billing'
     | '/settings/company'
+    | '/settings/danger'
     | '/settings/users'
     | '/site-visits/new'
     | '/agents/'
@@ -441,7 +461,9 @@ export interface FileRouteTypes {
     | '/reports/inventory'
     | '/reports/sales'
     | '/settings/audit'
+    | '/settings/billing'
     | '/settings/company'
+    | '/settings/danger'
     | '/settings/users'
     | '/site-visits/new'
     | '/agents'
@@ -482,7 +504,9 @@ export interface FileRouteTypes {
     | '/reports/inventory'
     | '/reports/sales'
     | '/settings/audit'
+    | '/settings/billing'
     | '/settings/company'
+    | '/settings/danger'
     | '/settings/users'
     | '/site-visits/new'
     | '/agents/'
@@ -524,7 +548,9 @@ export interface RootRouteChildren {
   ReportsInventoryRoute: typeof ReportsInventoryRoute
   ReportsSalesRoute: typeof ReportsSalesRoute
   SettingsAuditRoute: typeof SettingsAuditRoute
+  SettingsBillingRoute: typeof SettingsBillingRoute
   SettingsCompanyRoute: typeof SettingsCompanyRoute
+  SettingsDangerRoute: typeof SettingsDangerRoute
   SettingsUsersRoute: typeof SettingsUsersRoute
   SiteVisitsNewRoute: typeof SiteVisitsNewRoute
   AgentsIndexRoute: typeof AgentsIndexRoute
@@ -784,11 +810,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsAuditRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings/billing': {
+      id: '/settings/billing'
+      path: '/settings/billing'
+      fullPath: '/settings/billing'
+      preLoaderRoute: typeof SettingsBillingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings/company': {
       id: '/settings/company'
       path: '/settings/company'
       fullPath: '/settings/company'
       preLoaderRoute: typeof SettingsCompanyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/danger': {
+      id: '/settings/danger'
+      path: '/settings/danger'
+      fullPath: '/settings/danger'
+      preLoaderRoute: typeof SettingsDangerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings/users': {
@@ -844,7 +884,9 @@ const rootRouteChildren: RootRouteChildren = {
   ReportsInventoryRoute: ReportsInventoryRoute,
   ReportsSalesRoute: ReportsSalesRoute,
   SettingsAuditRoute: SettingsAuditRoute,
+  SettingsBillingRoute: SettingsBillingRoute,
   SettingsCompanyRoute: SettingsCompanyRoute,
+  SettingsDangerRoute: SettingsDangerRoute,
   SettingsUsersRoute: SettingsUsersRoute,
   SiteVisitsNewRoute: SiteVisitsNewRoute,
   AgentsIndexRoute: AgentsIndexRoute,

@@ -14,3 +14,4 @@ export * from "./finance";
 export * from "./finance-seed";
 export * from "./operations";
 export * from "./operations-seed";
+export * from "./management";
