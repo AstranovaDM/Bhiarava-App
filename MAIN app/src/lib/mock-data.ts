@@ -1,4 +1,4 @@
-// Mock operational data for Bhairava (real-estate plot sales OS).
+﻿// Mock operational data for Bhairava (real-estate plot sales OS).
 // Replace with Lovable Cloud tables when the backend is wired up.
 
 export type PlotStatus = "available" | "reserved" | "booked" | "registered" | "resale";
@@ -31,11 +31,17 @@ export type CornerType = "Not corner" | "North-East" | "North-West" | "South-Eas
 export interface PlotType {
   id: string;
   name: string;
+  code?: string;
   areaSqYd: number;
+  areaUnit?: "Sq Yards" | "Sq Ft";
   lengthFt: number;
   widthFt: number;
   facingAllowed: Facing[];
   category: "Standard" | "Premium" | "Commercial" | "Irregular";
+  defaultFacing?: Facing;
+  defaultCorner?: CornerType;
+  defaultRoadWidthFt?: number;
+  defaultFeatures?: string[];
 }
 
 /** Rate card: base rate plus additive premiums per sq yd. */
@@ -43,16 +49,26 @@ export interface PricingRules {
   baseRatePerSqYd: number;
   facingPremium: Record<Facing, number>;
   cornerPremium: number;
+  /** Optional directional corner premiums (NE/NW/SE/SW). Falls back to cornerPremium. */
+  cornerPremiumByType?: Partial<Record<"NE" | "NW" | "SE" | "SW", number>>;
   featurePremium: Record<string, number>;
+  /** Optional road-width premium keyed by feet as string, e.g. "40". */
+  roadWidthPremium?: Record<string, number>;
+  otherPremiums?: { label: string; amountPerSqYd: number }[];
 }
 
 export interface ProjectAmenity {
   id: string;
   name: string;
   group: string;
+  category?: string;
+  description?: string;
   status: "Planned" | "In progress" | "Completed";
   completion: number;
   photos: number;
+  mediaUrls?: string[];
+  /** Marketing surface: internal | agent | customer */
+  visibility?: "internal" | "agent" | "customer";
   note?: string;
 }
 
@@ -75,6 +91,22 @@ export interface InventoryPlot {
   status: PlotStatus;
 }
 
+export interface ProjectPhase {
+  id: string;
+  name: string;
+  order: number;
+  status: "Planned" | "Active" | "Completed";
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface ProjectBlock {
+  id: string;
+  name: string;
+  phaseId?: string;
+  order: number;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -84,7 +116,14 @@ export interface Project {
   totalPlots: number;
   soldPlots: number;
   launchDate: string;
+  /** @deprecated Prefer lifecycleStatus — kept for backward-compatible list screens / localStorage. */
   status: "Draft" | "Active" | "Pre-launch" | "Sold out" | "On hold" | "Inactive";
+  /** Canonical lifecycle (Portfolio OS). Normalized on load via domain/migrate. */
+  lifecycleStatus?: "DRAFT" | "ACTIVE" | "ON_HOLD" | "COMPLETED" | "ARCHIVED";
+  /** Publish flag — orthogonal to lifecycle. DRAFT forces false. */
+  agentVisible?: boolean;
+  /** Publish flag — orthogonal to lifecycle. DRAFT forces false. */
+  customerListed?: boolean;
   valueCr: number;
   collectedCr: number;
   approvals: string[];
@@ -117,6 +156,8 @@ export interface Project {
   amenities?: ProjectAmenity[];
   inventory?: InventoryPlot[];
   agents?: string[];
+  phases?: ProjectPhase[];
+  blocks?: ProjectBlock[];
   settings?: {
     reservationDays: number;
     bookingAdvancePct: number;

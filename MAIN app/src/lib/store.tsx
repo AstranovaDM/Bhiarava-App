@@ -2,6 +2,9 @@
  * Editable admin data store.
  * Seeds from mock-data and persists local edits to localStorage so every
  * admin screen has real create / edit / delete access without a backend yet.
+ *
+ * Schema: KEY stays bhairava.admin.v3. schemaVersion inside payload drives
+ * domain normalization on load — never wipe existing demo/project records.
  */
 import {
   createContext,
@@ -28,10 +31,17 @@ import {
   type Reservation,
   type SiteVisit,
 } from "@/lib/mock-data";
+import {
+  migratePersisted,
+  normalizeProjectRecord,
+  normalizePlots,
+  STORE_SCHEMA_VERSION,
+} from "@/lib/domain/migrate";
 
 const KEY = "bhairava.admin.v3";
 
 interface Persisted {
+  schemaVersion?: number;
   projects?: Project[];
   customers?: Customer[];
   agents?: Agent[];
@@ -79,15 +89,9 @@ const mergeById = <T extends { id: string }>(seed: T[], extra: T[] = []): T[] =>
   return [...created, ...mergedSeed];
 };
 
-const seed = (): Data => ({
-  projects: seedProjects,
-  customers: seedCustomers,
-  agents: seedAgents,
-  plots: seedPlots,
-  bookings: seedBookings,
-  reservations: seedReservations,
-  siteVisits: seedSiteVisits,
-});
+const seedProjectsNormalized: Project[] = seedProjects.map(
+  (p) => normalizeProjectRecord({ ...p } as Record<string, unknown>) as unknown as Project,
+);
 
 const DataContext = createContext<Ctx | null>(null);
 
@@ -108,7 +112,7 @@ export function defaultPlotPolygon(index: number): [number, number][] {
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const [core, setCore] = useState({
-    projects: seedProjects,
+    projects: seedProjectsNormalized,
     customers: seedCustomers,
     agents: seedAgents,
   });
@@ -122,19 +126,27 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const raw = localStorage.getItem(KEY);
       if (!raw) return;
       const parsed = JSON.parse(raw) as Persisted;
-      if (parsed.projects || parsed.customers || parsed.agents) {
+      const migrated = migratePersisted(parsed);
+      const hasProjects = Array.isArray(parsed.projects);
+      const hasCustomers = Array.isArray(parsed.customers);
+      const hasAgents = Array.isArray(parsed.agents);
+      if (hasProjects || hasCustomers || hasAgents) {
         setCore({
-          projects: parsed.projects ?? seedProjects,
-          customers: parsed.customers ?? seedCustomers,
-          agents: parsed.agents ?? seedAgents,
+          projects: hasProjects
+            ? ((migrated.projects as unknown as Project[]) ?? seedProjectsNormalized)
+            : seedProjectsNormalized,
+          customers: hasCustomers ? (parsed.customers as Customer[]) : seedCustomers,
+          agents: hasAgents ? (parsed.agents as Agent[]) : seedAgents,
         });
       }
-      if (parsed.extraPlots) setExtraPlots(parsed.extraPlots);
+      if (Array.isArray(parsed.extraPlots)) {
+        setExtraPlots((migrated.extraPlots as unknown as Plot[]) ?? []);
+      }
       if (parsed.extraBookings) setExtraBookings(parsed.extraBookings);
       if (parsed.extraReservations) setExtraReservations(parsed.extraReservations);
       if (parsed.extraVisits) setExtraVisits(parsed.extraVisits);
     } catch {
-      /* ignore corrupt storage */
+      /* ignore corrupt storage — keep seed data */
     }
   }, []);
 
@@ -150,10 +162,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }) => {
       try {
         const payload: Persisted = {
-          projects: next.projects,
+          schemaVersion: STORE_SCHEMA_VERSION,
+          projects: next.projects.map(
+            (p) =>
+              normalizeProjectRecord({ ...p } as Record<string, unknown>) as unknown as Project,
+          ),
           customers: next.customers,
           agents: next.agents,
-          extraPlots: next.extraPlots,
+          extraPlots: normalizePlots(
+            next.extraPlots as unknown as Record<string, unknown>[],
+          ) as unknown as Plot[],
           extraBookings: next.extraBookings,
           extraReservations: next.extraReservations,
           extraVisits: next.extraVisits,
@@ -234,7 +252,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
       bookings: mergeById(seedBookings, extraBookings),
       reservations: mergeById(seedReservations, extraReservations),
       siteVisits: mergeById(seedSiteVisits, extraVisits),
-      saveProject: (p) => upsertCore("projects", p),
+      saveProject: (p) =>
+        upsertCore(
+          "projects",
+          normalizeProjectRecord({ ...p } as Record<string, unknown>) as unknown as Project,
+        ),
       removeProject: (id) => removeCore("projects", id),
       saveCustomer: (c) => upsertCore("customers", c),
       removeCustomer: (id) => removeCore("customers", id),
@@ -309,7 +331,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         } catch {
           /* ignore */
         }
-        setCore({ projects: seedProjects, customers: seedCustomers, agents: seedAgents });
+        setCore({ projects: seedProjectsNormalized, customers: seedCustomers, agents: seedAgents });
         setExtraPlots([]);
         setExtraBookings([]);
         setExtraReservations([]);
