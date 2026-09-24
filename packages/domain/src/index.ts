@@ -12,3 +12,4 @@ export * from './reservation';
 export * from './pii';
 export * from './plot-geometry';
 export * from './plot-status-colors';
+export * from './layout-api';

@@ -13,6 +13,13 @@ import { StorageModule } from './storage/storage.module';
 import { PiiModule } from './pii/pii.module';
 import { AuditModule } from './audit/audit.module';
 import { FinanceModule } from './finance/finance.module';
+import { DocumentsModule } from './documents/documents.module';
+import { PaymentsModule } from './payments/payments.module';
+import { VisitsModule } from './visits/visits.module';
+import { LeadsModule } from './leads/leads.module';
+import { CustomersModule } from './customers/customers.module';
+import { LayoutsModule } from './layouts/layouts.module';
+import { ProjectsModule } from './projects/projects.module';
 
 @Module({
   imports: [
@@ -32,6 +39,13 @@ import { FinanceModule } from './finance/finance.module';
     PiiModule,
     AuditModule,
     FinanceModule,
+    DocumentsModule,
+    PaymentsModule,
+    VisitsModule,
+    LeadsModule,
+    CustomersModule,
+    LayoutsModule,
+    ProjectsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
