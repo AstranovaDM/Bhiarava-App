@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ChevronRight, SlidersHorizontal, Search, Download, Plus } from "lucide-react";
-import { Fragment, type ButtonHTMLAttributes, type ReactNode } from "react";
+import React, { Fragment, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { plotStatusFill, plotStatusFromLabel, plotStatusInk, plotStatusSolid } from "@/lib/plot-status-colors";
 import { cn } from "@/lib/utils";
 import { ScrollTabs } from "@/components/scroll-tabs";
@@ -47,13 +47,14 @@ export function Panel({
   children,
   className,
   tonal,
+  ...rest
 }: {
   children: ReactNode;
   className?: string;
   tonal?: boolean;
-}) {
+} & React.ComponentPropsWithoutRef<"section">) {
   return (
-    <section className={cn(tonal ? "panel-tonal" : "panel", "min-w-0 p-4 sm:p-6", className)}>
+    <section {...rest} className={cn(tonal ? "panel-tonal" : "panel", "min-w-0 p-4 sm:p-6", className)}>
       {children}
     </section>
   );
