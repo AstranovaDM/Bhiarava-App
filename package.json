@@ -1,14 +1,26 @@
 {
   "name": "bhairava-workspace",
   "private": true,
-  "description": "Current product: MAIN app. Older Admin / Agent / Customer portals are in archive/.",
+  "description": "Current product: MAIN app + MAIN-agent + MAIN-customer (+ Expo mobile). Older portals in archive/.",
   "scripts": {
     "dev": "npm run dev --prefix \"MAIN app\"",
     "dev:admin": "npm run dev --prefix archive/bhairava-app",
     "dev:agent": "npm run dev --prefix archive/bhairava-agent",
     "dev:customer": "npm run dev --prefix archive/bhairava-customer",
     "dev:all": "npx concurrently -n admin,agent,customer -c blue,green,magenta \"npm run dev:admin\" \"npm run dev:agent\" \"npm run dev:customer\"",
-    "db:generate": "npm run db:generate --prefix archive/bhairava-app && node scripts/sync-prisma-client.cjs"
+    "db:generate": "npm run db:generate --prefix archive/bhairava-app && node scripts/sync-prisma-client.cjs",
+    "dev:main": "npm run dev --prefix \"MAIN app\" -- --host 0.0.0.0 --port 3000",
+    "dev:main-agent": "npm run dev --prefix MAIN-agent -- --host 0.0.0.0",
+    "dev:main-customer": "npm run dev --prefix MAIN-customer -- --host 0.0.0.0",
+    "dev:client": "npx concurrently -n main,agent,customer -c blue,green,magenta \"npm run dev:main\" \"npm run dev:main-agent\" \"npm run dev:main-customer\"",
+    "dev:agent-expo": "npm start --prefix MAIN-agent-expo",
+    "dev:customer-expo": "npm start --prefix MAIN-customer-expo",
+    "test:agent": "npm test --prefix MAIN-agent",
+    "test:customer": "npm test --prefix MAIN-customer",
+    "typecheck:agent": "npm run typecheck --prefix MAIN-agent",
+    "typecheck:customer": "npm run typecheck --prefix MAIN-customer",
+    "build:agent": "npm run build --prefix MAIN-agent",
+    "build:customer": "npm run build --prefix MAIN-customer"
   },
   "devDependencies": {
     "concurrently": "^10.0.4"
