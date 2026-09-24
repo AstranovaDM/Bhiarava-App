@@ -10,6 +10,7 @@ import { ProjectLayoutTab } from "@/components/project-workspace/layout-tab";
 import { ComingSoonPanel } from "@/components/project-workspace/coming-soon-panel";
 import { ProjectSalesTab } from "@/components/project-workspace/sales-tab";
 import { ProjectFinanceTab } from "@/components/project-workspace/finance-tab";
+import { ProjectDocumentsTab } from "@/components/project-workspace/documents-tab";
 import { byId, projects as seedProjects } from "@/lib/mock-data";
 import { useData } from "@/lib/store";
 import { getSession } from "@/lib/auth";
@@ -232,7 +233,7 @@ function ProjectWorkspace() {
         <ProjectFinanceTab project={project} />
       )}
         {tab === "documents" && (
-          <ComingSoonPanel title="Documents" description="Vault with visibility model ships in P3." />
+          <ProjectDocumentsTab project={project} />
         )}
         {tab === "team" && (
           <ComingSoonPanel title="Team" description="Agent assignment for this project ships in P5." />

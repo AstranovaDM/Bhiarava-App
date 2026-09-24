@@ -12,4 +12,5 @@ export * from "./plot-pii";
 export * from "./sales";
 export * from "./finance";
 export * from "./finance-seed";
-
+export * from "./operations";
+export * from "./operations-seed";
