@@ -40,7 +40,8 @@
     "dev:customer-web": "npm run dev -w @bhairava/customer-web",
     "dev:agent-mobile": "npm start -w @bhairava/agent-mobile",
     "dev:customer-mobile": "npm start -w @bhairava/customer-mobile",
-    "db:bootstrap": "npm run bootstrap -w @bhairava/database"
+    "db:bootstrap": "npm run bootstrap -w @bhairava/database",
+    "test:e2e:api": "node scripts/e2e/production-flow.mjs"
   },
   "engines": {
     "node": ">=20"
