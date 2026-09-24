@@ -15,3 +15,5 @@ export * from "./finance-seed";
 export * from "./operations";
 export * from "./operations-seed";
 export * from "./management";
+export * from "./management-p6";
+export * from "./management-derive";
