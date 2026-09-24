@@ -415,7 +415,7 @@ Project Documents vault visibility:
 
 | Former open call | Resolution |
 |------------------|------------|
-| Plot status enum | Â§13 commercial + HOLD/BLOCKED |
+| Plot status enum | §13 canonical nine-status model (no HOLD) |
 | Resale in-project vs global | Global + Overview count |
 | Finance vs Setup edit | Setup edit = Founder/Admin; Finance view-only on Setup |
 | Lifecycle vs Published | Â§11 orthogonal flags |
