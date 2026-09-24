@@ -111,3 +111,24 @@ export function canBlockPlot(role: unknown): boolean {
 export function canOverridePlotPrice(role: unknown): boolean {
   return canPriceOverride(role);
 }
+
+/** Sales tab: Founder/Admin full; Finance/Viewer read; Agent limited; Customer denied. */
+export type SalesAccess = "full" | "read" | "limited" | "denied";
+
+export function salesAccessForRole(role: unknown): SalesAccess {
+  const r = normalizeRole(role);
+  if (r === "Founder" || r === "Administrator") return "full";
+  if (r === "Finance" || r === "Viewer") return "read";
+  if (r === "Agent" || r === "Sales") return "limited";
+  return "denied";
+}
+
+export function canEditSalesOps(role: unknown): boolean {
+  return salesAccessForRole(role) === "full";
+}
+
+export function canViewSales(role: unknown): boolean {
+  const a = salesAccessForRole(role);
+  return a === "full" || a === "read" || a === "limited";
+}
+

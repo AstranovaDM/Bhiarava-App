@@ -8,6 +8,7 @@ import { ProjectOverviewTab } from "@/components/project-workspace/overview-tab"
 import { ProjectSetupTab } from "@/components/project-workspace/setup-tab";
 import { ProjectLayoutTab } from "@/components/project-workspace/layout-tab";
 import { ComingSoonPanel } from "@/components/project-workspace/coming-soon-panel";
+import { ProjectSalesTab } from "@/components/project-workspace/sales-tab";
 import { byId, projects as seedProjects } from "@/lib/mock-data";
 import { useData } from "@/lib/store";
 import { getSession } from "@/lib/auth";
@@ -224,7 +225,7 @@ function ProjectWorkspace() {
           />
         )}
         {tab === "sales" && (
-          <ComingSoonPanel title="Sales" description="Project-scoped leads, visits, reservations, and bookings — P4." />
+          <ProjectSalesTab project={project} plots={projectPlots} />
         )}
         {tab === "finance" && (
           <ComingSoonPanel title="Finance" description="Project money summary ships in P5. Global Payments / Collections remain available." />
