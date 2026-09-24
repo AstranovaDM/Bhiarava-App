@@ -9,3 +9,5 @@ export * from "./plot-pricing";
 export * from "./plot-corner";
 export * from "./plot-mapping";
 export * from "./plot-pii";
+export * from "./sales";
+export * from "./finance";

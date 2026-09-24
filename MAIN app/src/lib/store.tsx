@@ -19,6 +19,7 @@ import {
   agents as seedAgents,
   bookings as seedBookings,
   customers as seedCustomers,
+  leads as seedLeads,
   plots as seedPlots,
   projects as seedProjects,
   reservations as seedReservations,
@@ -26,6 +27,7 @@ import {
   type Agent,
   type Booking,
   type Customer,
+  type Lead,
   type Plot,
   type Project,
   type Reservation,
@@ -37,6 +39,10 @@ import {
   normalizePlots,
   STORE_SCHEMA_VERSION,
 } from "@/lib/domain/migrate";
+import {
+  applyReservationExpiry,
+  type CancelRequest,
+} from "@/lib/domain/sales";
 
 const KEY = "bhairava.admin.v3";
 
@@ -45,20 +51,24 @@ interface Persisted {
   projects?: Project[];
   customers?: Customer[];
   agents?: Agent[];
+  leads?: Lead[];
   extraPlots?: Plot[];
   extraBookings?: Booking[];
   extraReservations?: Reservation[];
   extraVisits?: SiteVisit[];
+  cancelRequests?: CancelRequest[];
 }
 
 interface Data {
   projects: Project[];
   customers: Customer[];
   agents: Agent[];
+  leads: Lead[];
   plots: Plot[];
   bookings: Booking[];
   reservations: Reservation[];
   siteVisits: SiteVisit[];
+  cancelRequests: CancelRequest[];
 }
 
 interface Ctx extends Data {
@@ -68,6 +78,8 @@ interface Ctx extends Data {
   removeCustomer: (id: string) => void;
   saveAgent: (a: Agent) => void;
   removeAgent: (id: string) => void;
+  saveLead: (l: Lead) => void;
+  removeLead: (id: string) => void;
   savePlot: (p: Plot) => void;
   removePlot: (id: string) => void;
   saveBooking: (b: Booking) => void;
@@ -77,6 +89,9 @@ interface Ctx extends Data {
   saveVisit: (v: SiteVisit) => void;
   saveSiteVisit: (v: SiteVisit) => void;
   removeSiteVisit: (id: string) => void;
+  saveCancelRequest: (c: CancelRequest) => void;
+  /** Re-evaluate reservation expiry deterministically (load/action). */
+  refreshReservationExpiry: () => void;
   reset: () => void;
   nextId: (prefix: string, list: { id: string }[]) => string;
 }
@@ -115,36 +130,46 @@ export function DataProvider({ children }: { children: ReactNode }) {
     projects: seedProjectsNormalized,
     customers: seedCustomers,
     agents: seedAgents,
+    leads: seedLeads,
   });
   const [extraPlots, setExtraPlots] = useState<Plot[]>([]);
   const [extraBookings, setExtraBookings] = useState<Booking[]>([]);
   const [extraReservations, setExtraReservations] = useState<Reservation[]>([]);
   const [extraVisits, setExtraVisits] = useState<SiteVisit[]>([]);
+  const [cancelRequests, setCancelRequests] = useState<CancelRequest[]>([]);
 
   useEffect(() => {
     try {
       const raw = localStorage.getItem(KEY);
-      if (!raw) return;
+      if (!raw) {
+        // still evaluate seed reservation expiry on first load
+        return;
+      }
       const parsed = JSON.parse(raw) as Persisted;
       const migrated = migratePersisted(parsed);
       const hasProjects = Array.isArray(parsed.projects);
       const hasCustomers = Array.isArray(parsed.customers);
       const hasAgents = Array.isArray(parsed.agents);
-      if (hasProjects || hasCustomers || hasAgents) {
+      const hasLeads = Array.isArray(parsed.leads);
+      if (hasProjects || hasCustomers || hasAgents || hasLeads) {
         setCore({
           projects: hasProjects
             ? ((migrated.projects as unknown as Project[]) ?? seedProjectsNormalized)
             : seedProjectsNormalized,
           customers: hasCustomers ? (parsed.customers as Customer[]) : seedCustomers,
           agents: hasAgents ? (parsed.agents as Agent[]) : seedAgents,
+          leads: hasLeads ? (parsed.leads as Lead[]) : seedLeads,
         });
       }
       if (Array.isArray(parsed.extraPlots)) {
         setExtraPlots((migrated.extraPlots as unknown as Plot[]) ?? []);
       }
       if (parsed.extraBookings) setExtraBookings(parsed.extraBookings);
-      if (parsed.extraReservations) setExtraReservations(parsed.extraReservations);
+      if (parsed.extraReservations) {
+        setExtraReservations(applyReservationExpiry(parsed.extraReservations));
+      }
       if (parsed.extraVisits) setExtraVisits(parsed.extraVisits);
+      if (parsed.cancelRequests) setCancelRequests(parsed.cancelRequests);
     } catch {
       /* ignore corrupt storage — keep seed data */
     }
@@ -155,10 +180,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
       projects: Project[];
       customers: Customer[];
       agents: Agent[];
+      leads: Lead[];
       extraPlots: Plot[];
       extraBookings: Booking[];
       extraReservations: Reservation[];
       extraVisits: SiteVisit[];
+      cancelRequests: CancelRequest[];
     }) => {
       try {
         const payload: Persisted = {
@@ -169,12 +196,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
           ),
           customers: next.customers,
           agents: next.agents,
+          leads: next.leads,
           extraPlots: normalizePlots(
             next.extraPlots as unknown as Record<string, unknown>[],
           ) as unknown as Plot[],
           extraBookings: next.extraBookings,
           extraReservations: next.extraReservations,
           extraVisits: next.extraVisits,
+          cancelRequests: next.cancelRequests,
         };
         localStorage.setItem(KEY, JSON.stringify(payload));
       } catch {
@@ -190,28 +219,32 @@ export function DataProvider({ children }: { children: ReactNode }) {
         projects: Project[];
         customers: Customer[];
         agents: Agent[];
+        leads: Lead[];
         extraPlots: Plot[];
         extraBookings: Booking[];
         extraReservations: Reservation[];
         extraVisits: SiteVisit[];
+        cancelRequests: CancelRequest[];
       }>,
     ) => {
       const next = {
         projects: patch.projects ?? core.projects,
         customers: patch.customers ?? core.customers,
         agents: patch.agents ?? core.agents,
+        leads: patch.leads ?? core.leads,
         extraPlots: patch.extraPlots ?? extraPlots,
         extraBookings: patch.extraBookings ?? extraBookings,
         extraReservations: patch.extraReservations ?? extraReservations,
         extraVisits: patch.extraVisits ?? extraVisits,
+        cancelRequests: patch.cancelRequests ?? cancelRequests,
       };
       persist(next);
     },
-    [core, extraPlots, extraBookings, extraReservations, extraVisits, persist],
+    [core, extraPlots, extraBookings, extraReservations, extraVisits, cancelRequests, persist],
   );
 
   const upsertCore = useCallback(
-    <K extends "projects" | "customers" | "agents">(key: K, item: Data[K][number]) => {
+    <K extends "projects" | "customers" | "agents" | "leads">(key: K, item: Data[K][number]) => {
       setCore((prev) => {
         const list = prev[key] as { id: string }[];
         const exists = list.some((x) => x.id === item.id);
@@ -225,7 +258,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   );
 
   const removeCore = useCallback(
-    (key: "projects" | "customers" | "agents", id: string) => {
+    (key: "projects" | "customers" | "agents" | "leads", id: string) => {
       setCore((prev) => {
         const next = {
           ...prev,
@@ -248,10 +281,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
       projects: core.projects,
       customers: core.customers,
       agents: core.agents,
+      leads: core.leads,
       plots: mergeById(seedPlots, extraPlots),
       bookings: mergeById(seedBookings, extraBookings),
-      reservations: mergeById(seedReservations, extraReservations),
+      reservations: applyReservationExpiry(mergeById(seedReservations, extraReservations)),
       siteVisits: mergeById(seedSiteVisits, extraVisits),
+      cancelRequests,
       saveProject: (p) =>
         upsertCore(
           "projects",
@@ -262,6 +297,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       removeCustomer: (id) => removeCore("customers", id),
       saveAgent: (a) => upsertCore("agents", a),
       removeAgent: (id) => removeCore("agents", id),
+      saveLead: (l) => upsertCore("leads", l),
+      removeLead: (id) => removeCore("leads", id),
       savePlot: (p) => {
         setExtraPlots((prev) => {
           const next = upsertExtra(prev, p);
@@ -292,7 +329,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       },
       saveReservation: (r) => {
         setExtraReservations((prev) => {
-          const next = upsertExtra(prev, r);
+          const evaluated = applyReservationExpiry([r])[0] ?? r;
+          const next = upsertExtra(prev, evaluated);
           snapshot({ extraReservations: next });
           return next;
         });
@@ -325,17 +363,37 @@ export function DataProvider({ children }: { children: ReactNode }) {
           return next;
         });
       },
+      saveCancelRequest: (c) => {
+        setCancelRequests((prev) => {
+          const next = upsertExtra(prev, c);
+          snapshot({ cancelRequests: next });
+          return next;
+        });
+      },
+      refreshReservationExpiry: () => {
+        setExtraReservations((prev) => {
+          const next = applyReservationExpiry(prev);
+          snapshot({ extraReservations: next });
+          return next;
+        });
+      },
       reset: () => {
         try {
           localStorage.removeItem(KEY);
         } catch {
           /* ignore */
         }
-        setCore({ projects: seedProjectsNormalized, customers: seedCustomers, agents: seedAgents });
+        setCore({
+          projects: seedProjectsNormalized,
+          customers: seedCustomers,
+          agents: seedAgents,
+          leads: seedLeads,
+        });
         setExtraPlots([]);
         setExtraBookings([]);
         setExtraReservations([]);
         setExtraVisits([]);
+        setCancelRequests([]);
       },
       nextId: (prefix, list) => {
         let max = 0;
@@ -356,6 +414,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       extraBookings,
       extraReservations,
       extraVisits,
+      cancelRequests,
       upsertCore,
       removeCore,
       upsertExtra,
