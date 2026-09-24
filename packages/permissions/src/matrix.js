@@ -31,6 +31,7 @@ exports.PERMISSIONS = [
     'reports.view',
     'audit.view',
     'settings.manage',
+    'customers.pii.reveal',
 ];
 const ALL_STAFF = [
     'projects.view', 'finance.view', 'reports.view',
@@ -42,7 +43,7 @@ const FULL_OPS = [
     'sales.leads.manage', 'sales.reservations.manage', 'sales.bookings.manage', 'sales.cancel.approve',
     'finance.operate', 'finance.reconcile', 'finance.commissions.manage',
     'documents.internal', 'documents.agent_visible', 'documents.customer_related',
-    'audit.view', 'settings.manage', 'users.manage',
+    'audit.view', 'settings.manage', 'users.manage', 'customers.pii.reveal',
 ];
 exports.ROLE_PERMISSIONS = {
     FOUNDER: [...FULL_OPS, 'org.manage'],
@@ -50,6 +51,7 @@ exports.ROLE_PERMISSIONS = {
     FINANCE: [
         'projects.view', 'finance.view', 'finance.operate', 'finance.reconcile',
         'finance.commissions.manage', 'documents.customer_related', 'reports.view',
+        'customers.pii.reveal',
     ],
     VIEWER: ['projects.view', 'finance.view', 'reports.view', 'documents.internal'],
     AGENT: [
@@ -83,4 +85,3 @@ function normalizeRoleCode(raw) {
     };
     return map[raw.trim()] ?? 'VIEWER';
 }
-//# sourceMappingURL=matrix.js.map

@@ -32,6 +32,7 @@ export const PERMISSIONS = [
   'reports.view',
   'audit.view',
   'settings.manage',
+  'customers.pii.reveal',
 ] as const;
 export type PermissionCode = (typeof PERMISSIONS)[number];
 
@@ -46,7 +47,7 @@ const FULL_OPS: PermissionCode[] = [
   'sales.leads.manage', 'sales.reservations.manage', 'sales.bookings.manage', 'sales.cancel.approve',
   'finance.operate', 'finance.reconcile', 'finance.commissions.manage',
   'documents.internal', 'documents.agent_visible', 'documents.customer_related',
-  'audit.view', 'settings.manage', 'users.manage',
+  'audit.view', 'settings.manage', 'users.manage', 'customers.pii.reveal',
 ];
 
 export const ROLE_PERMISSIONS: Record<RoleCode, readonly PermissionCode[]> = {
@@ -55,6 +56,7 @@ export const ROLE_PERMISSIONS: Record<RoleCode, readonly PermissionCode[]> = {
   FINANCE: [
     'projects.view', 'finance.view', 'finance.operate', 'finance.reconcile',
     'finance.commissions.manage', 'documents.customer_related', 'reports.view',
+    'customers.pii.reveal',
   ],
   VIEWER: ['projects.view', 'finance.view', 'reports.view', 'documents.internal'],
   AGENT: [
@@ -77,7 +79,6 @@ export function normalizeRoleCode(raw: unknown): RoleCode {
   if (s === 'VIEWER') return 'VIEWER';
   if (s === 'AGENT' || s === 'SALES') return 'AGENT';
   if (s === 'CUSTOMER') return 'CUSTOMER';
-  // title-case from UI
   const map: Record<string, RoleCode> = {
     Founder: 'FOUNDER', Administrator: 'ADMINISTRATOR', Finance: 'FINANCE',
     Viewer: 'VIEWER', Agent: 'AGENT', Customer: 'CUSTOMER', Sales: 'AGENT',

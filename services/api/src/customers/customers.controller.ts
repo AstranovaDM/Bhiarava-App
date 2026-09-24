@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { IsOptional, IsString, MinLength } from 'class-validator';
 import { CustomersService } from './customers.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -13,6 +13,8 @@ class CreateCustomerDto {
   @IsOptional() @IsString() city?: string;
   @IsOptional() @IsString() agentId?: string;
   @IsOptional() @IsString() notes?: string;
+  @IsOptional() @IsString() pan?: string;
+  @IsOptional() @IsString() aadhaar?: string;
 }
 
 @Controller('customers')
@@ -24,6 +26,17 @@ export class CustomersController {
   @RequirePermissions('projects.view')
   list(@CurrentUser() user: AuthPrincipal) {
     return this.customers.list(user);
+  }
+
+  @Get(':id/pii')
+  @RequirePermissions('customers.pii.reveal')
+  reveal(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id') id: string,
+    @Query('field') field?: string,
+  ) {
+    const f = field === 'aadhaar' ? 'aadhaar' : 'pan';
+    return this.customers.revealPii(user, id, f);
   }
 
   @Get(':id')
