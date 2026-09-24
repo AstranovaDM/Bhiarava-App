@@ -201,7 +201,7 @@ Browse projects the agent is permitted to sell. Read-only project sales content:
 Per-project inventory:
 
 ```text
-Available / Reserved / Booked / Sold
+AVAILABLE / RESERVED / BOOKED / UNDER_DOCUMENTATION / SOLD / REGISTERED / RESALE_AVAILABLE / BLOCKED / CANCELLED
 ```
 
 Interactive layout shows plot number, area, dimensions, facing, corner, road width, features, price, availability.
@@ -210,13 +210,19 @@ Filters: size bands, facing, corner / park facing / main road, price bands.
 
 ### Agent privacy rule (critical)
 
-Agents may see the **status of every plot**:
+Agents may see the **status of every plot** (canonical model):
 
 ```text
 A-101 AVAILABLE
 A-102 RESERVED
 A-103 BOOKED
-A-104 REGISTERED
+A-104 UNDER_DOCUMENTATION
+A-105 SOLD
+A-106 REGISTERED
+A-107 RESALE_AVAILABLE
+A-108 BLOCKED
+A-109 CANCELLED
+```
 ```
 
 They must **not** automatically see another agentÃ¢â‚¬â„¢s customer PII (name, mobile, payments, address) unless that customer is assigned to the logged-in agent.
@@ -303,7 +309,7 @@ Active/public projects with overview, location, images, amenities, public pricin
 
 ### Plot Availability
 
-Public plot facts for AVAILABLE plots. RESERVED / BOOKED show **status only** Ã¢â‚¬â€ never who.
+Public plot facts for AVAILABLE and RESALE_AVAILABLE plots. RESERVED / BOOKED / UNDER_DOCUMENTATION / SOLD / REGISTERED show **status only** Ã¢â‚¬â€ never who.
 
 ### Customer privacy (strict)
 
@@ -375,6 +381,7 @@ Locked there (do not diverge):
 - Lifecycle: `DRAFT | ACTIVE | ON_HOLD | COMPLETED | ARCHIVED`.
 - `agentVisible` / `customerListed` are **publish flags**, not lifecycle statuses.
 - Facing: North/South/East/West. Corner: NONE/NE/NW/SE/SW.
+- Plot status (canonical): AVAILABLE → RESERVED → BOOKED → UNDER_DOCUMENTATION → SOLD → REGISTERED (+ RESALE_AVAILABLE, BLOCKED, CANCELLED; no HOLD).
 - Plot types are templates; per-plot overrides need permission, reason, audit.
 - Document vault: `INTERNAL | AGENT_VISIBLE | CUSTOMER_PROFILE_RELATED` Ã¢â‚¬â€ MAIN-customer never browses the project document repository.
 - MAIN-agent: read assigned project sales data; cannot edit project master data.

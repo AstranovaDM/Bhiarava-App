@@ -45,7 +45,7 @@ Current tabs: **Overview Â· Plots Â· Customers Â· Bookings Â· Documents*
 - Identity: name, code, type, **lifecycle status**, location line  
 - **Publish flags** (separate from lifecycle): Agent-visible Â· Customer-listed  
 - Compliance chips: RERA / approvals (when present)  
-- KPI strip: Total / Available / Reserved / Booked / Registered Â· Absorption % Â· Pipeline value Â· Collected Â· Overdue  
+- KPI strip: Total / Available / Reserved / Booked / Under documentation / Sold / Registered / Resale / Blocked Â· Absorption % Â· Pipeline value Â· Collected Â· Overdue  
 - Primary actions: Edit basics Â· Add plots Â· Open layout Â· Upload master plan  
 - Secondary: Assign agents Â· Change lifecycle Â· Site visit Â· New reservation Â· New booking  
 - Readiness indicator when `DRAFT` or when publish is blocked
@@ -315,24 +315,57 @@ NONE | NE | NW | SE | SW
 
 Legacy mock labels (`Not corner`, `North-East`, â€¦) map into these codes at migration.
 
-### Plot commercial status (state machine â€” locked vocabulary)
+### Plot commercial status (canonical — LOCKED)
 
-Align with platform architecture + inventory:
+Do **not** use `HOLD` as a plot status. `BLOCKED` is the administrative unavailable state.
 
-```text
-AVAILABLE â†’ RESERVED â†’ BOOKED â†’ REGISTERED
-```
-
-Operational:
+**Canonical statuses:**
 
 ```text
-HOLD      â€” temporarily unavailable; not sellable
-BLOCKED   â€” admin block (legal/dispute); not sellable
+AVAILABLE
+RESERVED
+BOOKED
+UNDER_DOCUMENTATION
+SOLD
+REGISTERED
+RESALE_AVAILABLE
+BLOCKED
+CANCELLED
 ```
 
-**Resale:** inventory offered for resale uses channel/flag or dedicated ops list; do not overload REGISTERED. Existing mock `resale` status migrates to REGISTERED/HOLD + `resaleListed` flag or Resale inventory entity â€” **implementation detail**, product rule: resale is global ops, not a fourth sales happy-path status.
+**Normal lifecycle:**
 
-Transitions enforce the approved machine in API (agents cannot skip; admin may with audit where policy allows).
+```text
+AVAILABLE → RESERVED → BOOKED → UNDER_DOCUMENTATION → SOLD → REGISTERED
+```
+
+**Additional allowed transitions:**
+
+```text
+AVAILABLE → BLOCKED
+BLOCKED → AVAILABLE
+RESERVED → AVAILABLE
+RESERVED → CANCELLED
+RESERVED → BOOKED
+BOOKED → UNDER_DOCUMENTATION
+BOOKED → CANCELLED
+UNDER_DOCUMENTATION → BOOKED
+UNDER_DOCUMENTATION → SOLD
+UNDER_DOCUMENTATION → CANCELLED
+CANCELLED → AVAILABLE
+SOLD → REGISTERED
+SOLD → RESALE_AVAILABLE
+REGISTERED → RESALE_AVAILABLE
+RESALE_AVAILABLE → RESERVED
+RESALE_AVAILABLE → BLOCKED
+```
+
+**Rules:**
+
+- Preserve full plot-status history (who, when, from, to).
+- Exceptional/manual transitions (anything outside the automatic reserve/book/register happy path driven by sales documents) require **reason + audit**.
+- Agents do not free-form edit status; reserve/book flows create/update sales records that drive allowed transitions server-side.
+- Overview inventory funnel and KPIs must count **all** canonical statuses (not a shortened Available/Reserved/Booked/Registered set).
 
 ---
 
@@ -402,7 +435,7 @@ Non-blocking follow-ups (do not stop P0â€“P1):
 1. Exact org-level â€œall agents can sellâ€ policy UX.  
 2. Jurisdiction profile for mandatory RERA (data: company/project regulatory profile).  
 3. Whether plot type library is project-only in v1 or also org-scoped (v1 = project-scoped templates).  
-4. Mock `resale` status migration mechanics (flag vs entity) during data model PR.
+4. Mock status vocabulary migration to canonical nine-status model during data model PR.
 
 ---
 
@@ -413,6 +446,7 @@ Non-blocking follow-ups (do not stop P0â€“P1):
 | `projects` | `lifecycleStatus`, `agentVisible`, `customerListed`; soft `archivedAt`; no hard delete with operational children |
 | `project_amenities` | description, developmentStatus, completionPct, media refs, visibility |
 | `plot_types` | template table FK project (v1) |
+| `plot_status_history` | fromStatus, toStatus, reason, actorId, createdAt; append-only |
 | `plots` | FK type; override columns; `priceOverride`, `priceOverrideReason`; facing/corner enums; polygon/geometry FK to layout feature id |
 | `pricing_rules` | JSON/table per project; audit on change |
 | `plot_price_override_audit` | history rows |

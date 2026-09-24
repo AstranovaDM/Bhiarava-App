@@ -127,11 +127,13 @@ Server enforces Active / publish readiness checklists on lifecycle and publish f
 | Change price (rule recalc / edit inputs) | EDIT | EDIT | NONE | NONE | NONE | NONE |
 | Apply price override (reason + audit) | FULL | FULL | NONE | NONE | NONE | NONE |
 | Change plot commercial status | FULL | FULL | NONE | NONE | REQUEST* | NONE |
-| Block / unblock plot (`BLOCKED`/`HOLD`) | FULL | FULL | NONE | NONE | NONE | NONE |
+| Block / unblock plot (`BLOCKED`) | FULL | FULL | NONE | NONE | NONE | NONE |
 | View plot history | VIEW | VIEW | VIEW | VIEW | VIEW (status history only) | NONE |
 | View linked customer on plot | VIEW | VIEW | VIEW (if payment-linked) | VIEW | VIEW_ASSIGNED only | VIEW_ASSIGNED (self only) |
 
 \*Agent status changes that are part of reserve/book flows are **CREATE/EDIT on reservation/booking**, not free-form plot master status edits. Direct plot status edits = Admin/Founder (or REQUEST cancel flows).
+
+**Plot status vocabulary (locked):** `AVAILABLE | RESERVED | BOOKED | UNDER_DOCUMENTATION | SOLD | REGISTERED | RESALE_AVAILABLE | BLOCKED | CANCELLED`. No `HOLD`. See Portfolio OS §13 for allowed transitions; exceptional transitions need reason + audit.
 
 **Record-level:** Agent sees **all** commercial availability on allowed projects. Agent sees linked customer PII **only** if that customer is assigned/owned. Customer never sees other customersâ€™ identity, booking value, payments, or documents.
 

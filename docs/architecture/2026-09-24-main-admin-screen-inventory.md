@@ -181,3 +181,14 @@ C. Deepen an existing area (e.g. Project detail as full Portfolio OS).
 ---
 
 *Companion to `2026-09-24-bhairava-three-app-architecture.md`. MAIN-agent and MAIN-customer inventories are separate docs.*
+
+---
+
+## Plot status vocabulary (locked)
+
+Canonical plot commercial statuses (see Portfolio OS):
+
+`AVAILABLE | RESERVED | BOOKED | UNDER_DOCUMENTATION | SOLD | REGISTERED | RESALE_AVAILABLE | BLOCKED | CANCELLED`
+
+Normal path: AVAILABLE → RESERVED → BOOKED → UNDER_DOCUMENTATION → SOLD → REGISTERED.  
+No `HOLD` — use `BLOCKED` for administrative unavailability. Preserve status history; exceptional transitions require reason + audit.
