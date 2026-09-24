@@ -1,4 +1,4 @@
-﻿import type {
+import type {
   AuthSession, BookingSummary, CustomerSummary, DocumentSummary, LayoutSummary,
   LeadSummary, PaymentSummary, PlotSummary, ProjectSummary, PublicUser,
   ReservationSummary, VisitSummary,
@@ -188,6 +188,19 @@ export function createApiClient(opts: ApiClientOptions) {
           'GET',
           '/api/documents/' + id + '/download',
         ),
+    },
+    audit: {
+      list: (q?: { take?: number; action?: string; entityType?: string }) => {
+        const params = new URLSearchParams();
+        if (q?.take) params.set('take', String(q.take));
+        if (q?.action) params.set('action', q.action);
+        if (q?.entityType) params.set('entityType', q.entityType);
+        const qs = params.toString();
+        return request<Array<Record<string, unknown>>>('GET', '/api/audit' + (qs ? '?' + qs : ''));
+      },
+    },
+    notifications: {
+      list: () => request<Array<Record<string, unknown>>>('GET', '/api/notifications'),
     },
     health: () => request<{ ok: boolean }>('GET', '/api/health'),
   };

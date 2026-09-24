@@ -17,3 +17,11 @@ services/worker/.env
 **/dist/
 packages/**/dist/
 services/**/dist/
+
+.env
+**/.env
+!.env.example
+!**/.env.example
+
+artifacts/
+

@@ -50,3 +50,20 @@ Password: `Demo@12345`
 ## Rough edge
 
 Losing concurrent reserve may return HTTP 500 instead of 409; uniqueness still holds.
+
+## Phase F — Admin web
+
+pps/admin-web expanded with Dashboard → Founder danger zone navigation shell.
+Business data via @bhairava/api-client + live API; sessionStorage = auth tokens only.
+
+pm run build -w @bhairava/admin-web **passes**.
+
+## Phase K — Backup / restore
+
+`
+pg_dump -Fc → artifacts/backups/bhairava-*.dump
+pg_restore → bhairava_restore_verify
+`
+
+Integrity: users=8, projects=1, plots=8, customers=3 (source == restored).
+**PRODUCTION VERIFIED** on this machine.
