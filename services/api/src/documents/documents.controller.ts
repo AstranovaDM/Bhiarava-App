@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { IsInt, IsOptional, IsString, Min, MinLength } from 'class-validator';
 import { DocumentsService } from './documents.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -16,6 +16,12 @@ class CreateDocumentDto {
   @IsOptional() @IsString() bookingId?: string;
   @IsOptional() @IsString() customerId?: string;
   @IsOptional() @IsString() docType?: string;
+}
+
+class ReplaceDocumentDto {
+  @IsString() originalName!: string;
+  @IsOptional() @IsString() mimeType?: string;
+  @IsOptional() @IsInt() @Min(0) sizeBytes?: number;
 }
 
 @Controller('documents')
@@ -44,5 +50,17 @@ export class DocumentsController {
   @RequirePermissions('documents.customer_related')
   download(@CurrentUser() user: AuthPrincipal, @Param('id') id: string) {
     return this.documents.download(user, id);
+  }
+
+  @Post(':id/replace')
+  @RequirePermissions('documents.internal')
+  replace(@CurrentUser() user: AuthPrincipal, @Param('id') id: string, @Body() dto: ReplaceDocumentDto) {
+    return this.documents.replace(user, id, dto);
+  }
+
+  @Patch(':id/archive')
+  @RequirePermissions('documents.internal')
+  archive(@CurrentUser() user: AuthPrincipal, @Param('id') id: string) {
+    return this.documents.archive(user, id);
   }
 }

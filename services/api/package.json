@@ -12,6 +12,8 @@
     "test:e2e": "jest --config jest.config.js --testPathPattern=e2e"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.787.0",
+    "@aws-sdk/s3-request-presigner": "^3.787.0",
     "@bhairava/auth": "*",
     "@bhairava/config": "*",
     "@bhairava/database": "*",
