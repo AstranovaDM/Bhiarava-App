@@ -49,7 +49,7 @@ Password: `Demo@12345`
 
 ## Rough edge
 
-Losing concurrent reserve may return HTTP 500 instead of 409; uniqueness still holds.
+Double-reserve loser returns HTTP **409 Conflict** (serialization/unique mapped). Verified via `scripts/e2e/assert-409-reserve.mjs`.
 
 ## Phase F — Admin web
 

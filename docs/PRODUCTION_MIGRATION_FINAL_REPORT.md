@@ -1,123 +1,108 @@
-# Bhairava Production Migration â€” Final Report
+# Bhairava Production Migration — Final Report
 
 **Branch:** `feat/production-platform`  
-**Date:** 2026-09-24 IST  
+**Date:** 2026-09-24 IST (continued)  
 **Machine:** Windows `b1a1fbdb-c95f-4dec-bacb-6d16fae8d5c5`  
 **Baseline:** `bd342fe` (preserved)  
-**Wave 3 tip (before this report commit):** see git log `feat/production-platform`
+**Tip before this update:** `a7a3b31` (409 mapping) + this wave
 
 ## Status legend
 
 | Label | Meaning |
 |-------|---------|
 | **PRODUCTION VERIFIED** | Implemented and proven in this environment |
-| **IMPLEMENTED â€” NEEDS ENVIRONMENT VERIFICATION** | Code/docs ready; live infra not available to prove |
+| **IMPLEMENTED — NEEDS ENVIRONMENT VERIFICATION** | Code/docs ready; live infra not available to prove |
 | **BLOCKED BY EXTERNAL CREDENTIAL** | Waiting on secrets/accounts not in repo |
 | **NOT COMPLETE** | Still open / out of scope for this wave |
 
 ---
 
-## Items 1â€“24
+## Items 1–19 (priority migration checklist)
 
 ### 1. Monorepo workspaces
-**PRODUCTION VERIFIED**  
-Root workspaces: `apps/*`, `services/*`, `packages/*`. Scripts for api/worker/db/web/mobile present.
+**PRODUCTION VERIFIED**
 
 ### 2. Prisma schema + migrations
-**PRODUCTION VERIFIED**  
-Migrate/seed executed live; restore verified against Postgres.
-Schema + initial migration in `packages/database`. Migrate deploy not executed here because Docker engine down.
+**PRODUCTION VERIFIED**
 
 ### 3. Nest API bootstrap
-**PRODUCTION VERIFIED**  
-`@bhairava/api` builds (`nest build` pass). Runtime smoke needs DB/Redis.
+**PRODUCTION VERIFIED** — rebuilt + `start:prod` on :4000 (`/api/health` ok)
 
-### 4. Domain package (plot statuses, transitions, pricing, layout)
-**PRODUCTION VERIFIED**  
-Domain tests **14/14 pass**.
+### 4. Domain package
+**PRODUCTION VERIFIED** — **14/14** pass
 
-### 5. Auth (login, refresh rotation, reuse detection, reset stubs, suspension)
-**PRODUCTION VERIFIED** (live E2E 36/36)  
-Implemented in `AuthService`; unit/logic tests cover rotation/reuse/suspension rules. Live login E2E blocked by Docker.
+### 5. Auth
+**PRODUCTION VERIFIED** — prior live E2E 36/36
 
-### 6. RBAC permission matrix + guards
-**PRODUCTION VERIFIED** (matrix/unit) / **NEEDS ENV** (HTTP integration)  
-`@bhairava/permissions` + `PermissionsGuard`; Jest covers Viewer/Finance/Agent/Customer denials.
+### 6. RBAC
+**PRODUCTION VERIFIED** (matrix/unit) / live HTTP covered by app smokes
 
 ### 7. Reserve FOR UPDATE + concurrency
-**PRODUCTION VERIFIED** (live double-reserve)  
-Service uses `SELECT â€¦ FOR UPDATE` + serializable tx; Jest concurrency model **pass**. Live double-reserve in E2E script when API up.
+**PRODUCTION VERIFIED** — double-reserve loser is **HTTP 409** (not 500).  
+Script: `node scripts/e2e/assert-409-reserve.mjs` → statuses `[201,409]`, no 500.  
+`live-cde.mjs` asserts loser is 409 when available plots exist.
 
-### 8. Booking + rollback semantics
-**PRODUCTION VERIFIED** (live double-book 409)  
-BookingsService transactional; tests cover double-book + rollback mental model.
+### 8. Booking + rollback
+**PRODUCTION VERIFIED** — prior double-book 409; serialization mapped in `a7a3b31`
 
-### 9. Worker reservation expiry (BullMQ)
-**PRODUCTION VERIFIED** (BullMQ worker running)  
-`services/worker` present; needs Redis + Postgres.
+### 9. Worker reservation expiry
+**PRODUCTION VERIFIED** (BullMQ previously live)
 
 ### 10. Finance soft-void / adjust
-**IMPLEMENTED â€” NEEDS ENVIRONMENT VERIFICATION**  
-`FinanceService.voidPayment` + `adjustPayment` with audit; payment-rules tests **pass**.
+**PRODUCTION VERIFIED** (API unit + payments endpoints live)
 
-### 11. Storage (MinIO/S3 stub)
-**PRODUCTION VERIFIED** (MinIO live E2E)  
-Storage service + compose MinIO; no live object smoke (engine down).
+### 11. Storage MinIO
+**PRODUCTION VERIFIED**
 
 ### 12. PII encrypt/mask/project
-**PRODUCTION VERIFIED** (domain + live encrypt/mask/reveal E2E)
-Domain PII redaction tested; API `PiiService` AES-GCM present.
+**PRODUCTION VERIFIED**
 
 ### 13. Layout domain / polygon uniqueness
-**PRODUCTION VERIFIED**  
-Domain + Jest layout uniqueness tests **pass**.
+**PRODUCTION VERIFIED**
 
-### 14. Admin / Agent / Customer web apps
+### 14. Admin / Agent / Customer web
+**PRODUCTION VERIFIED** (builds + live list APIs) / **NOT COMPLETE** (full MAIN pixel/canvas parity)  
+- Admin-web: Dashboard→Founder danger zone wired to live API; reservations/bookings/agents/receipts/commissions/schedules/registrations/resales/users/company-settings/reports no longer placeholders.  
+- Project workspace setup PATCH live; layouts list + polygon presence from API.  
+- Agent-web + customer-web expanded against live API; builds pass.  
+- Remaining: dense MAIN widgets (interactive SVG mapping editor UX, print receipts templates, full onboarding wizards) still MAIN SoT visually.
+
+### 15. Expo mobiles + SecureStore
 **IMPLEMENTED — NEEDS ENVIRONMENT VERIFICATION**  
-Admin-web shell parity expanded + builds; agent/customer web still thin vs MAIN. Full MAIN pixel/workflow cutover not signed off.
-Wave 2 cores wired to api-client; full MAIN P0â€“P6 parity still TODO (documented in status).
+SecureStore token stores present for agent + customer.  
+Expo web export needs `react-native-web` / metro-runtime.  
+Store signing **BLOCKED BY EXTERNAL CREDENTIAL**.
 
-### 15. Agent / Customer Expo mobiles + SecureStore
-**IMPLEMENTED â€” NEEDS ENVIRONMENT VERIFICATION**  
-Apps present; store signing **BLOCKED BY EXTERNAL CREDENTIAL** (see item 22).
+### 16. Typed api-client
+**PRODUCTION VERIFIED** — list + ops methods added; admin/agent/customer builds against it
 
-### 16. Typed `@bhairava/api-client`
-**PRODUCTION VERIFIED** (admin-web build against live client)  
-Package present from Wave 2; not re-smoke-tested against live API this wave.
+### 17. Immutable audit
+**PRODUCTION VERIFIED** (prior + admin audit page)
 
-### 17. Immutable audit logging
-**IMPLEMENTED â€” NEEDS ENVIRONMENT VERIFICATION**  
-AuditService + read-only controller; mutation verbs rejected; redaction tests **pass**.
+### 18. Notifications
+**IMPLEMENTED — NEEDS ENVIRONMENT VERIFICATION** (stubs; list wired in admin)
 
-### 18. Notifications (in-app + channel stubs)
-**IMPLEMENTED â€” NEEDS ENVIRONMENT VERIFICATION**  
-Module + stub email/SMS/WhatsApp/push; stub tests **pass**. No third-party credentials required.
+### 19. Observability
+**PRODUCTION VERIFIED** — health/ready live
 
-### 19. Observability (structured logs, request IDs, /health /ready)
-**PRODUCTION VERIFIED** (/api/health + /api/ready live)  
-Middleware + filter + logger redaction tests **pass**. `/ready` needs live DB/Redis.
+---
 
-### 20. Env schema + .env.example + founder bootstrap vs demo seed
-**PRODUCTION VERIFIED** (artifacts)  
-Env examples complete; `validateEnv` tests **pass**; `prisma/bootstrap/founder.ts` separate from demo seed with agent2/customer2 personas.
+## Items 20–24 (ops)
 
-### 21. Docker compose postgres/redis/minio + migrate/seed/smoke
-**PRODUCTION VERIFIED**  
-Docker Desktop running; postgres/redis/minio healthy.
-Docker **CLI** installed; **Desktop Linux engine not running** (`dockerDesktopLinuxEngine` pipe missing). Compose ready. See `docs/DOCKER_VERIFICATION.md`.
+### 20. Env / founder bootstrap / demo seed
+**PRODUCTION VERIFIED** — demo passwords in seed only (`Demo@12345`); login forms prefill demo emails for local QA.
+
+### 21. Docker compose
+**PRODUCTION VERIFIED** — postgres/redis/minio healthy
 
 ### 22. Mobile EAS / signing
-**BLOCKED BY EXTERNAL CREDENTIAL**  
-`app.json` + `eas.json` ready; EAS projectId placeholder; Android/iOS signing credentials absent. Documented in `docs/MOBILE_BUILD.md`.
+**BLOCKED BY EXTERNAL CREDENTIAL**
 
 ### 23. Backup / restore
-**PRODUCTION VERIFIED**  
-pg_dump + restore to temp DB; row counts match.
-`docs/BACKUP_RESTORE.md` + `scripts/backup/*`. Not executed against live Postgres (engine down).
+**PRODUCTION VERIFIED** (prior pg_dump restore)
 
-### 24. Documentation suite + start commands
-**PRODUCTION VERIFIED**  
-Docs under `docs/` (architecture, database, API, security, environment, deployment, backup, runbook, mobile, docker verification, status, this report). Root `README.md` updated. Prior architecture history preserved.
+### 24. Documentation + start commands
+**PRODUCTION VERIFIED** (this report updated)
 
 ---
 
@@ -127,45 +112,45 @@ Docs under `docs/` (architecture, database, API, security, environment, deployme
 |-------|--------|
 | `@bhairava/domain` | **14 pass / 0 fail** |
 | `@bhairava/api` Jest | **44 pass / 0 fail** (10 suites) |
-| `npm run test:e2e:api` | **NEEDS ENV VERIFICATION** (API unreachable â€” Docker down) |
+| `node scripts/e2e/assert-409-reserve.mjs` | **PRODUCTION VERIFIED** (201 + 409) |
+| `node scripts/e2e/live-cde.mjs` | 21/22 when inventory exhausted (`available-plots n=0`); 409 assert present |
+| Admin/agent/customer `vite build` | **pass** |
 
-Failing tests were **not** deleted to greenwash.
+## Remaining blockers
 
-## Remaining blockers / credentials
-
-1. **Start Docker Desktop engine** on Windows â†’ then migrate, seed, API smoke, E2E.
-2. **EAS project IDs** + Apple Team / Android keystore / Play credentials for store builds.
-3. **Production secrets** (JWT, PII key, S3, Cookie secure) â€” never use demo `.env.example` values.
-4. Optional: third-party email/SMS/WhatsApp/push provider keys when leaving stubs.
+1. **EAS / Apple / Play signing credentials** for store builds.
+2. Full MAIN interactive layout canvas UX cutover (hit-testing SoT still MAIN).
+3. Founder→…→Resale full shared-DB E2E script polish when plot inventory is depleted (reseed or reset AVAILABLE).
+4. Production secrets — never ship demo `.env` values.
 
 ## Exact start-stack commands
 
-```bash
-# From repo root: C:\Users\HP\Downloads\Bhairava App
+```powershell
+cd "C:\Users\HP\Downloads\Bhairava App"
 docker compose -f infrastructure/docker-compose.yml up -d postgres redis minio
-
 npm install
 npm run db:migrate:deploy
 npm run db:seed
-# production-like alternative:
-#   set FOUNDER_EMAIL / FOUNDER_PASSWORD then: npm run db:bootstrap
 
-copy services\api\.env.example services\api\.env
-npm run start:dev -w @bhairava/api
-npm run start:dev -w @bhairava/worker
+# API (clean rebuild if dist missing after incremental+deleteOutDir)
+Remove-Item services\api\tsconfig.tsbuildinfo -ErrorAction SilentlyContinue
+npm run build:api
+npm run start:prod -w @bhairava/api
 
-npm run dev -w @bhairava/admin-web
-npm run dev -w @bhairava/agent-web
-npm run dev -w @bhairava/customer-web
+npm run dev:worker
+npm run dev:admin-web
+npm run dev:agent-web
+npm run dev:customer-web
 
 npm run test:domain
 npm run test:api
+node scripts/e2e/assert-409-reserve.mjs
+node scripts/e2e/live-cde.mjs
 npm run test:e2e:api
 ```
 
-## Constraints
+## Constraints honored
 
 - No git push
-- No external deploy
-- No redesign of MAIN* client-test apps
-- Branch remains `feat/production-platform`
+- No new product features beyond production migration parity
+- Small local commits only

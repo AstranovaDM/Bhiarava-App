@@ -554,6 +554,164 @@ function AuditPage() {
   );
 }
 
+
+
+function ProjectSetupForm({ projectId, project, onSaved }: { projectId: string; project: AnyRow | null; onSaved: (p: AnyRow) => void }) {
+  const [form, setForm] = useState({ name: '', city: '', state: '', location: '', description: '', reraNumber: '', lifecycleStatus: '' });
+  const [msg, setMsg] = useState('');
+  useEffect(() => {
+    if (!project) return;
+    setForm({
+      name: project.name || '',
+      city: project.city || '',
+      state: project.state || '',
+      location: project.location || '',
+      description: project.description || '',
+      reraNumber: project.reraNumber || '',
+      lifecycleStatus: project.lifecycleStatus || project.status || '',
+    });
+  }, [project]);
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    setMsg('');
+    try {
+      const updated = await (api.projects as any).update(projectId, form);
+      onSaved(updated);
+      setMsg('Saved via PATCH /api/projects/:id');
+    } catch (ex: any) { setMsg(ex.message || String(ex)); }
+  }
+  return (
+    <form onSubmit={save} className="row">
+      <div><label>Name</label><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+      <div><label>City</label><input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} /></div>
+      <div><label>State</label><input value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} /></div>
+      <div><label>Location</label><input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} /></div>
+      <div><label>RERA</label><input value={form.reraNumber} onChange={(e) => setForm({ ...form, reraNumber: e.target.value })} /></div>
+      <div><label>Lifecycle</label><input value={form.lifecycleStatus} onChange={(e) => setForm({ ...form, lifecycleStatus: e.target.value })} /></div>
+      <div style={{ flex: '1 1 100%' }}><label>Description</label><textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} /></div>
+      <button className="btn" type="submit">Save setup</button>
+      {msg ? <p className="muted">{msg}</p> : null}
+    </form>
+  );
+}
+
+function CompanySettingsPage() {
+  const [json, setJson] = useState('{}');
+  const [msg, setMsg] = useState('');
+  useEffect(() => {
+    (api as any).companySettings.get().then((r: any) => setJson(JSON.stringify(r.settingsJson ?? r.settings ?? {}, null, 2))).catch((e: any) => setMsg(String(e.message || e)));
+  }, []);
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    setMsg('');
+    try {
+      await (api as any).companySettings.update(JSON.parse(json));
+      setMsg('Saved to production API');
+    } catch (ex: any) { setMsg(ex.message || String(ex)); }
+  }
+  return (
+    <div>
+      <div className="topbar"><h1>Company settings</h1></div>
+      <div className="card">
+        <p className="muted">Live company_settings row — no localStorage SoT.</p>
+        <form onSubmit={save}>
+          <label>settingsJson</label>
+          <textarea rows={16} value={json} onChange={(e) => setJson(e.target.value)} style={{ width: '100%', fontFamily: 'ui-monospace, monospace' }} />
+          <button className="btn" type="submit">Save</button>
+        </form>
+        {msg ? <p className="muted">{msg}</p> : null}
+      </div>
+    </div>
+  );
+}
+
+function ReportsPage({ focus }: { focus: 'sales' | 'inventory' | 'collections' }) {
+  const [data, setData] = useState<AnyRow | null>(null);
+  const [err, setErr] = useState('');
+  useEffect(() => {
+    (api as any).reports.summary().then(setData).catch((e: any) => setErr(String(e.message || e)));
+  }, []);
+  const inv = (data?.inventoryByStatus as AnyRow[]) || [];
+  return (
+    <div>
+      <div className="topbar"><h1>{focus} report</h1></div>
+      {err ? <p className="err">{err}</p> : null}
+      <div className="grid">
+        <div className="stat"><div className="k">Projects</div><div className="v">{String(data?.projects ?? '—')}</div></div>
+        <div className="stat"><div className="k">Bookings</div><div className="v">{String(data?.bookings ?? '—')}</div></div>
+        <div className="stat"><div className="k">Active reservations</div><div className="v">{String(data?.activeReservations ?? '—')}</div></div>
+        <div className="stat"><div className="k">Collections (paise)</div><div className="v">{String((data?.collections as any)?.amountPaise ?? '—')}</div></div>
+      </div>
+      <div className="card">
+        <h2>Inventory by status</h2>
+        <table>
+          <thead><tr><th>Status</th><th>Count</th></tr></thead>
+          <tbody>{inv.map((r, i) => <tr key={i}><td>{String(r.status)}</td><td>{String(r.count)}</td></tr>)}</tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function LayoutsPage() {
+  const projects = useAsyncList(() => api.projects.list() as Promise<AnyRow[]>);
+  const [projectId, setProjectId] = useState('');
+  const [layouts, setLayouts] = useState<AnyRow[]>([]);
+  const [plots, setPlots] = useState<AnyRow[]>([]);
+  const [err, setErr] = useState('');
+  useEffect(() => {
+    if (!projectId && projects.rows[0]?.id) setProjectId(projects.rows[0].id);
+  }, [projects.rows, projectId]);
+  useEffect(() => {
+    if (!projectId) return;
+    Promise.all([
+      (api as any).layouts.list(projectId),
+      api.plots.listByProject(projectId),
+    ]).then(([l, p]) => { setLayouts(Array.isArray(l) ? l : []); setPlots(p); }).catch((e) => setErr(String(e.message || e)));
+  }, [projectId]);
+  return (
+    <div>
+      <div className="topbar"><h1>Layouts & interactive mapping</h1></div>
+      <div className="card row">
+        <div>
+          <label>Project</label>
+          <select value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+            {projects.rows.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        </div>
+      </div>
+      {err ? <p className="err">{err}</p> : null}
+      <div className="card">
+        <h2>Layouts</h2>
+        <table>
+          <thead><tr><th>Id</th><th>Name</th><th>Size</th></tr></thead>
+          <tbody>
+            {layouts.map((l) => (
+              <tr key={l.id}><td>{l.id}</td><td>{l.name || l.label || '—'}</td><td>{String(l.widthPx || '')}×{String(l.heightPx || '')}</td></tr>
+            ))}
+          </tbody>
+        </table>
+        {!layouts.length ? <p className="muted">No layouts yet — upload via project workspace (MAIN canvas SoT for hit-testing).</p> : null}
+      </div>
+      <div className="card">
+        <h2>Plot polygons (API)</h2>
+        <table>
+          <thead><tr><th>#</th><th>Status</th><th>Polygon</th></tr></thead>
+          <tbody>
+            {plots.map((p) => (
+              <tr key={p.id}>
+                <td>{p.number || p.plotNumber}</td>
+                <td><span className="chip">{p.status}</span></td>
+                <td>{p.polygonJson ? 'mapped' : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function DangerZone() {
   return (
     <div>
@@ -579,27 +737,27 @@ export function App() {
       <Route path="/projects/:projectId" element={<Shell><ProjectWorkspace /></Shell>} />
       <Route path="/projects/:projectId/plots" element={<Shell><PlotsPage /></Shell>} />
       <Route path="/plots" element={<Shell><PlotsPage /></Shell>} />
-      <Route path="/layouts" element={<Shell><Placeholder title="Layouts" note="Layouts via project API; canvas hit-testing remains MAIN SoT until signed off." /></Shell>} />
+      <Route path="/layouts" element={<Shell><LayoutsPage /></Shell>} />
       <Route path="/customers" element={<Shell><CustomersPage /></Shell>} />
       <Route path="/customers/:customerId" element={<Shell><CustomerDetail /></Shell>} />
       <Route path="/leads" element={<Shell><ResourceTable title="Leads" loader={() => api.leads.list() as Promise<AnyRow[]>} columns={[{ key: 'name', label: 'Name' }, { key: 'stage', label: 'Stage' }, { key: 'phone', label: 'Phone' }]} /></Shell>} />
       <Route path="/visits" element={<Shell><ResourceTable title="Site visits" loader={() => api.visits.list() as Promise<AnyRow[]>} columns={[{ key: 'id', label: 'Id' }, { key: 'status', label: 'Status' }, { key: 'scheduledAt', label: 'When' }]} /></Shell>} />
-      <Route path="/reservations" element={<Shell><Placeholder title="Reservations" note="Create via Plots actions (POST /api/reservations)." /></Shell>} />
-      <Route path="/bookings" element={<Shell><Placeholder title="Bookings" note="Create via Plots actions (POST /api/bookings)." /></Shell>} />
+      <Route path="/reservations" element={<Shell><ResourceTable title="Reservations" loader={() => (api as any).reservations.list() as Promise<AnyRow[]>} columns={[{ key: 'id', label: 'Id' }, { key: 'state', label: 'State' }, { key: 'plotId', label: 'Plot' }, { key: 'customerId', label: 'Customer' }, { key: 'expiresAt', label: 'Expires' }]} /></Shell>} />
+      <Route path="/bookings" element={<Shell><ResourceTable title="Bookings" loader={() => (api as any).bookings.list() as Promise<AnyRow[]>} columns={[{ key: 'id', label: 'Id' }, { key: 'state', label: 'State' }, { key: 'plotId', label: 'Plot' }, { key: 'customerId', label: 'Customer' }, { key: 'agreementValuePaise', label: 'Agreement' }]} /></Shell>} />
       <Route path="/payments" element={<Shell><ResourceTable title="Payments" loader={() => api.payments.list() as Promise<AnyRow[]>} columns={[{ key: 'id', label: 'Id' }, { key: 'amountPaise', label: 'Amount' }, { key: 'method', label: 'Method' }, { key: 'status', label: 'Status' }]} /></Shell>} />
-      <Route path="/receipts" element={<Shell><Placeholder title="Receipts" note="Derived from payments; print templates from MAIN." /></Shell>} />
-      <Route path="/commissions" element={<Shell><Placeholder title="Commissions" note="Finance commissions via payments/finance API." /></Shell>} />
-      <Route path="/collections" element={<Shell><Placeholder title="Collections" note="Collections schedule from finance API." /></Shell>} />
+      <Route path="/receipts" element={<Shell><ResourceTable title="Receipts" loader={() => (api as any).receipts.list() as Promise<AnyRow[]>} columns={[{ key: 'receiptNumber', label: 'Receipt #' }, { key: 'issuedAt', label: 'Issued' }, { key: 'bookingId', label: 'Booking' }, { key: 'paymentId', label: 'Payment' }]} /></Shell>} />
+      <Route path="/commissions" element={<Shell><ResourceTable title="Commissions" loader={() => (api as any).commissions.list() as Promise<AnyRow[]>} columns={[{ key: 'id', label: 'Id' }, { key: 'amountPaise', label: 'Amount' }, { key: 'status', label: 'Status' }, { key: 'bookingId', label: 'Booking' }]} /></Shell>} />
+      <Route path="/collections" element={<Shell><ResourceTable title="Payment schedules / collections" loader={() => (api as any).paymentSchedules.list() as Promise<AnyRow[]>} columns={[{ key: 'name', label: 'Installment' }, { key: 'dueDate', label: 'Due' }, { key: 'amountDuePaise', label: 'Amount' }, { key: 'status', label: 'Status' }, { key: 'bookingId', label: 'Booking' }]} /></Shell>} />
       <Route path="/documents" element={<Shell><DocumentsPage /></Shell>} />
-      <Route path="/registrations" element={<Shell><Placeholder title="Registrations" note="Registration workflow â€” API CRUD expanding." /></Shell>} />
-      <Route path="/resale" element={<Shell><Placeholder title="Resale" note="Resale UX from MAIN; live listings via API." /></Shell>} />
-      <Route path="/agents" element={<Shell><Placeholder title="Agents" note="Agent directory from users/agents profiles." /></Shell>} />
+      <Route path="/registrations" element={<Shell><ResourceTable title="Registrations" loader={() => (api as any).registrations.list() as Promise<AnyRow[]>} columns={[{ key: 'id', label: 'Id' }, { key: 'status', label: 'Status' }, { key: 'deedNumber', label: 'Deed #' }, { key: 'registeredAt', label: 'Registered' }]} /></Shell>} />
+      <Route path="/resale" element={<Shell><ResourceTable title="Resale listings" loader={() => (api as any).resales.list() as Promise<AnyRow[]>} columns={[{ key: 'id', label: 'Id' }, { key: 'status', label: 'Status' }, { key: 'askingPricePaise', label: 'Ask' }, { key: 'plotId', label: 'Plot' }, { key: 'customerId', label: 'Customer' }]} /></Shell>} />
+      <Route path="/agents" element={<Shell><ResourceTable title="Agents" loader={() => (api as any).agents.list() as Promise<AnyRow[]>} columns={[{ key: 'code', label: 'Code' }, { key: 'name', label: 'Name' }, { key: 'phone', label: 'Phone' }, { key: 'region', label: 'Region' }, { key: 'status', label: 'Status' }]} /></Shell>} />
       <Route path="/notifications" element={<Shell><ResourceTable title="Notifications" loader={async () => { const r = await (api as any).notifications.list(); return Array.isArray(r) ? r : []; }} columns={[{ key: 'title', label: 'Title' }, { key: 'channel', label: 'Channel' }, { key: 'createdAt', label: 'When' }]} /></Shell>} />
-      <Route path="/reports/sales" element={<Shell><Placeholder title="Sales report" note="Aggregations from bookings/payments only." /></Shell>} />
-      <Route path="/reports/inventory" element={<Shell><Placeholder title="Inventory report" note="Plot status funnel from API." /></Shell>} />
-      <Route path="/reports/collections" element={<Shell><Placeholder title="Collections report" note="Finance collections aggregates." /></Shell>} />
-      <Route path="/settings/company" element={<Shell><Placeholder title="Company settings" note="PATCH company settings via admin API." /></Shell>} />
-      <Route path="/settings/users" element={<Shell><Placeholder title="Users & roles" note="User provisioning via auth + RBAC APIs." /></Shell>} />
+      <Route path="/reports/sales" element={<Shell><ReportsPage focus="sales" /></Shell>} />
+      <Route path="/reports/inventory" element={<Shell><ReportsPage focus="inventory" /></Shell>} />
+      <Route path="/reports/collections" element={<Shell><ReportsPage focus="collections" /></Shell>} />
+      <Route path="/settings/company" element={<Shell><CompanySettingsPage /></Shell>} />
+      <Route path="/settings/users" element={<Shell><ResourceTable title="Members / roles" loader={() => (api as any).users.list() as Promise<AnyRow[]>} columns={[{ key: 'displayName', label: 'Name' }, { key: 'email', label: 'Email' }, { key: 'roleCode', label: 'Role' }, { key: 'status', label: 'Status' }, { key: 'lastLoginAt', label: 'Last login' }]} /></Shell>} />
       <Route path="/settings/audit" element={<Shell><AuditPage /></Shell>} />
       <Route path="/settings/billing" element={<Shell><Placeholder title="Billing" note="Billing UI may be blocked by external credential." /></Shell>} />
       <Route path="/settings/danger" element={<Shell><DangerZone /></Shell>} />
