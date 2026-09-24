@@ -1,5 +1,9 @@
 # @bhairava/agent-web
 
-Agent web — production target (MAIN-agent is client-test SoT)
+Responsive agent web. SoT: `MAIN-agent` until cutover.
 
-Client-test behavioral SoT remains under MAIN* until Wave 2 cutover.
+```bash
+npm run start:dev -w @bhairava/api
+npm run dev -w @bhairava/agent-web
+```
+http://localhost:5174 — demo `agent@bhairava.demo` / `Demo@12345`

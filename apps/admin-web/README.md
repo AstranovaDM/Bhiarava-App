@@ -1,5 +1,16 @@
 # @bhairava/admin-web
 
-Vite/TanStack admin — production target (MAIN app is client-test SoT)
+Production admin (desktop-first). Behavioral SoT remains `MAIN app` until cutover proven.
 
-Client-test behavioral SoT remains under MAIN* until Wave 2 cutover.
+## Run
+
+```bash
+# terminal A
+npm run start:dev -w @bhairava/api
+
+# terminal B
+npm run dev -w @bhairava/admin-web
+```
+
+Open http://localhost:5173 — uses Vite proxy to API `:4000`.
+Demo login: `admin@bhairava.demo` / `Demo@12345`
