@@ -32,7 +32,9 @@ export class BookingsService {
     const advancePaise = BigInt(input.advancePaise ?? 0);
     if (agreementValuePaise <= 0n) throw new BadRequestException('agreementValuePaise must be > 0');
 
-    const result = await this.prisma.$transaction(
+    let result;
+    try {
+    result = await this.prisma.$transaction(
       async (tx) => {
         const rows = await tx.$queryRaw<
           Array<{ id: string; status: PlotStatus; organizationId: string; projectId: string }>
@@ -116,6 +118,17 @@ export class BookingsService {
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
+    } catch (err: any) {
+      if (err instanceof ConflictException || err instanceof BadRequestException || err instanceof NotFoundException) {
+        throw err;
+      }
+      const code = err?.code;
+      const msg = String(err?.message ?? err);
+      if (code === 'P2034' || code === 'P2002' || /could not serialize|deadlock|unique constraint/i.test(msg)) {
+        throw new ConflictException('Plot is no longer available (concurrent conflict)');
+      }
+      throw err;
+    }
 
     await this.audit.log({
       organizationId: actor.organizationId,

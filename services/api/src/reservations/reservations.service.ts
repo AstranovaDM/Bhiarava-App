@@ -27,12 +27,14 @@ export class ReservationsService {
   ) {}
 
   /**
-   * Concurrent-safe reserve: SELECT … FOR UPDATE on plot row inside a transaction.
+   * Concurrent-safe reserve: SELECT â€¦ FOR UPDATE on plot row inside a transaction.
    * Exactly one concurrent winner; others get 409.
    */
   async reserve(actor: AuthPrincipal, input: CreateReservationInput) {
     const holdHours = input.holdHours ?? DEFAULT_RESERVATION_HOURS;
-    const result = await this.prisma.$transaction(
+    let result;
+    try {
+    result = await this.prisma.$transaction(
       async (tx) => {
         const rows = await tx.$queryRaw<
           Array<{ id: string; status: PlotStatus; organizationId: string; projectId: string }>
@@ -51,7 +53,7 @@ export class ReservationsService {
           throw new ConflictException(`Plot is ${plot.status}, cannot reserve`);
         }
         if (!isTransitionAllowed(plot.status, PlotStatus.RESERVED)) {
-          throw new BadRequestException(`Transition ${plot.status} → RESERVED not allowed`);
+          throw new BadRequestException(`Transition ${plot.status} â†’ RESERVED not allowed`);
         }
 
         const customer = await tx.customer.findFirst({
@@ -97,6 +99,17 @@ export class ReservationsService {
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
+    } catch (err: any) {
+      if (err instanceof ConflictException || err instanceof BadRequestException || err instanceof NotFoundException) {
+        throw err;
+      }
+      const code = err?.code;
+      const msg = String(err?.message ?? err);
+      if (code === 'P2034' || code === 'P2002' || /could not serialize|deadlock|unique constraint/i.test(msg)) {
+        throw new ConflictException('Plot is no longer available (concurrent conflict)');
+      }
+      throw err;
+    }
 
     await this.audit.log({
       organizationId: actor.organizationId,
@@ -151,7 +164,7 @@ export class ReservationsService {
           released.push(r.id);
         });
       } catch {
-        // race with booking — skip
+        // race with booking â€” skip
       }
     }
     return { releasedCount: released.length, released };
