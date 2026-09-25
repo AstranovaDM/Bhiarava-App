@@ -3,7 +3,7 @@
 **Generated:** 2026-09-25 IST  
 **Branch:** `feat/production-platform`  
 **Start tip:** `4a9d5b9`  
-**Current tip:** `bb1730b` (`bb1730b91d4ad0fa0ef054dab7cf3833a3310d80`)  
+**Current tip (pre-finalize):** `2bf11fa` (`2bf11fa435e542563f8a613516e34a33dbc597c4`) ? final tip is the commit that contains this report; confirm with `git rev-parse HEAD`.
 **Push status:** **NOT PUSHED** (explicit stop at push boundary)
 
 ## Commits since start tip
@@ -195,7 +195,7 @@ See `docs/MOBILE_RELEASE.md`.
 Verify tip, then:
 
 ```
-bb1730b docs(release): tip SHA 8b59d83 on readiness report
+2bf11fa docs(release): tip SHA 8b59d83 on readiness report
 8b59d83 docs(release): readiness report + gate fixes (PDF test, scan allowlist, mobile skipLibCheck)
 501ff67 feat(release): receipt PDF, security headers/CORS, staging/prod contracts, bootstrap guards
 c84126f chore(release): hygiene â€” gitignore, untrack QA shots, strip demo login defaults, secret-scan
@@ -228,4 +228,4 @@ c84126f chore(release): hygiene â€” gitignore, untrack QA shots, strip demo
 
 ---
 
-*End of report. Tip SHA at report authoring: `bb1730b`.*
+*End of report. Gate-time HEAD before finalize commit: `2bf11fa`. Confirm tip with `git rev-parse --short HEAD`.*
