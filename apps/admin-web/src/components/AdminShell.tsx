@@ -32,7 +32,7 @@ import {
 } from 'lucide-react';
 import { AppShell, LoadingState, type AppShellUser, type NavGroup, type NavItem } from '@bhairava/ui-web';
 import { api, tokens } from '../api';
-import { appPath } from '../basePath';
+import { appPath, LOGO_SRC } from '../basePath';
 import { useAuthed } from '../lib/data';
 
 export const adminNavGroups: NavGroup[] = [
@@ -177,6 +177,7 @@ function AuthedShell({ children }: { children: ReactNode }) {
       fabActions={fabActions}
       tabItems={tabItems}
       brandTitle="Bhairava"
+      logoSrc={LOGO_SRC}
       brandSubtitle="Admin · Land Sales OS"
       user={user}
       notificationsTo="/notifications"
