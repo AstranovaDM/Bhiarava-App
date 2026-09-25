@@ -63,3 +63,16 @@ GoogleService-Info.plist
 Thumbs.db
 .idea/
 .vscode/
+
+# Generated Expo web export output
+**/dist-export-web/
+apps/**/dist-export-web/
+
+# Legacy MAIN scratch (never ship)
+MAIN app/scripts/
+MAIN app/qa-scripts/
+
+# One-off migration emitter waves (local only)
+scripts/wave2/
+scripts/wave3/
+scripts/wave4/
