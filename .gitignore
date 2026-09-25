@@ -76,3 +76,12 @@ MAIN app/qa-scripts/
 scripts/wave2/
 scripts/wave3/
 scripts/wave4/
+
+# Staging local secrets (never commit)
+.env.staging.local
+**/.env.staging.local
+artifacts/staging/
+
+
+apps/*-mobile/.env.staging
+
