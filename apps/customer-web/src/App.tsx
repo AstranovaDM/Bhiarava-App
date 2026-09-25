@@ -15,8 +15,8 @@ function useRows(loader: () => Promise<Row[]>) {
 
 function Login() {
   const nav = useNavigate();
-  const [email, setEmail] = useState('customer@bhairava.demo');
-  const [password, setPassword] = useState('Demo@12345');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [err, setErr] = useState('');
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -31,7 +31,7 @@ function Login() {
   return (
     <div className="card login">
       <h1>Customer portal</h1>
-      <p className="muted">Demo: customer@bhairava.demo / Demo@12345</p>
+      <p className="muted">Sign in with your customer credentials.</p>
       <form onSubmit={onSubmit}>
         <input value={email} onChange={(e) => setEmail(e.target.value)} />
         <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />

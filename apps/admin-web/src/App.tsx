@@ -43,8 +43,8 @@ function useAsyncList(loader: () => Promise<AnyRow[]>, deps: unknown[] = []) {
 
 function LoginPage() {
   const nav = useNavigate();
-  const [email, setEmail] = useState('admin@bhairava.demo');
-  const [password, setPassword] = useState('Demo@12345');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [err, setErr] = useState('');
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -60,7 +60,7 @@ function LoginPage() {
   return (
     <div className="card login">
       <h1>Bhairava Admin</h1>
-      <p className="muted">Live API only â€” no mock business store. Demo: admin@bhairava.demo / Demo@12345</p>
+      <p className="muted">Live API only — sign in with your organization credentials.</p>
       <form onSubmit={onSubmit}>
         <label>Email</label>
         <input value={email} onChange={(e) => setEmail(e.target.value)} data-testid="admin-email" />

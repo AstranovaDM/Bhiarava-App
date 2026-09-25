@@ -16,8 +16,8 @@ function useRows(loader: () => Promise<Row[]>, deps: unknown[] = []) {
 
 function Login() {
   const nav = useNavigate();
-  const [email, setEmail] = useState('agent@bhairava.demo');
-  const [password, setPassword] = useState('Demo@12345');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [err, setErr] = useState('');
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -32,7 +32,7 @@ function Login() {
   return (
     <div className="card login">
       <h1>Agent portal</h1>
-      <p className="muted">Live API — agent@bhairava.demo / Demo@12345</p>
+      <p className="muted">Live API — sign in with your agent credentials.</p>
       <form onSubmit={onSubmit}>
         <input value={email} onChange={(e) => setEmail(e.target.value)} data-testid="agent-email" />
         <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} data-testid="agent-password" />

@@ -56,8 +56,8 @@ function MoreScreen() {
 }
 
 function Login({ onDone }: { onDone: () => void }) {
-  const [email, setEmail] = useState('customer@bhairava.demo');
-  const [password, setPassword] = useState('Demo@12345');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [err, setErr] = useState('');
   return (
     <SafeAreaView style={{ flex: 1, padding: 24, justifyContent: 'center' }}>

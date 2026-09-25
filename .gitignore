@@ -1,4 +1,4 @@
-node_modules/
+﻿node_modules/
 .next/
 .env
 .env.local
@@ -9,7 +9,6 @@ dist/
 MAIN-agent-expo/dist-web/
 MAIN-customer-expo/dist-web/
 
-
 # Production platform
 packages/database/.env
 services/api/.env
@@ -17,11 +16,50 @@ services/worker/.env
 **/dist/
 packages/**/dist/
 services/**/dist/
+apps/**/dist/
+apps/**/dist-export/
 
 .env
 **/.env
 !.env.example
 !**/.env.example
+!**/.env.*.example
 
 artifacts/
+backups/
+*.dump
+*.sqlite
+*.db
 
+# Local scratch / build logs (never ship)
+scripts/_*.log
+scripts/_*.err
+scripts/_*.py
+scripts/_*.cjs
+scripts/_*.js
+scripts/_*.sql
+qa-screenshots/
+**/qa-screenshots/
+MAIN app/qa-screenshots/
+MAIN app/qa-scripts/
+bhairava-admin/
+bhairava-agent/
+bhairava-app/
+bhairava-customer/
+rumik-one-rupee-demo.json
+
+# Expo / EAS local
+.expo/
+*.jks
+*.p8
+*.p12
+*.mobileprovision
+*.keystore
+google-services.json
+GoogleService-Info.plist
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
