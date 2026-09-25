@@ -1,5 +1,6 @@
 import { Worker, Queue } from 'bullmq';
 import { PrismaClient } from '@bhairava/database';
+import type { Prisma } from '@prisma/client';
 import { InstallmentStatus, NotificationChannel, PlotStatus, ReservationState, StatusChangeSource } from '@prisma/client';
 
 const connection = { url: process.env.REDIS_URL || 'redis://localhost:6379' };
@@ -7,7 +8,7 @@ const prisma = new PrismaClient();
 
 export const RESERVATION_EXPIRY_QUEUE = 'reservation-expiry';
 
-async function notifyUsers(organizationId: string, userIds: Array<string | null | undefined>, title: string, body: string, payloadJson: Record<string, unknown>) {
+async function notifyUsers(organizationId: string, userIds: Array<string | null | undefined>, title: string, body: string, payloadJson: Prisma.InputJsonValue) {
   const seen = new Set<string>();
   for (const uid of userIds) {
     if (!uid || seen.has(uid)) continue;

@@ -1,9 +1,10 @@
-﻿# BHAIRAVA Staging Deployment + UAT Report
+# BHAIRAVA Staging Deployment + UAT Report
 
 **Date (IST):** 2026-09-25 15:43:49 Asia/Calcutta (original local UAT)
 **Follow-up (local staging re-verify):** 2026-09-25 16:40 Asia/Calcutta (IST) — BigInt + agent attribution confirmed on isolated stack @ `aa8f6fb`; harness + report push follows
 **Security suite (cloud agent):** 2026-09-25 — PR #10 review findings 1–8 remediated; domain 14 + api-client 3 + api 85 tests green
-**Branch tip:** `b59e5e685e64df92a23a63e839333bec7464e41e` (`b59e5e6`) on `feat/production-platform` — PR #10 security suite (findings 1–8) 
+**Windows Docker API verify (coordinator):** 2026-09-25 17:24 Asia/Calcutta (IST) — clean `docker build --no-cache` of `Dockerfile.api` -> image `bhairava-api:staging-verify`; container `/api/health`+`/api/ready` 200 on staging net; host staging restarted; UAT **54/54**; concurrency 201+409; domain 14 + api-client 3 + api 85; web builds + mobile tsc green
+**Branch tip:** (pinned in follow-up docs commit after Windows Docker/UAT re-verify on `feat/production-platform`)
 **PR:** https://github.com/BadhulaVijaybhaskar/bhairava-App/pull/10 — **OPEN / NOT MERGED**  
 **RC tag:** `bhairava-production-rc1` @ `e29ec71`  
 **Machine:** Windows (Vijay) — local isolated staging; cloud agent verified unit/API/security suite + clean workspace API build  
@@ -223,7 +224,7 @@ After rebuild with `BigIntJsonInterceptor` + service `toString()`: same endpoint
 
 | # | Finding | Status | Evidence |
 |---|---------|--------|----------|
-| 1 | Docker API builds workspace `dist/` packages | **FIXED** | `Dockerfile.api` builds `@bhairava/domain` + `@bhairava/permissions` before API; clean wipe of `dist/` then ordered rebuild → `services/api/dist/main.js` OK. Docker daemon **unavailable** in this VM (`docker: command not found`); coordinator to re-prove `docker build` + `/health` `/ready` on Windows staging. |
+| 1 | Docker API builds workspace `dist/` packages | **FIXED + PROVEN ON WINDOWS** | Clean `docker build --no-cache -f infrastructure/Dockerfile.api -t bhairava-api:staging-verify .` exit 0 (domain→permissions→prisma generate→nest build). Ran container on `bhairava_staging_net` `:14001`; `GET /api/health` 200 `status=ok`; `GET /api/ready` 200 db+redis up. |
 | 2 | Serialize concurrent token refresh | **FIXED** | `@bhairava/api-client` single in-flight refresh promise; **3/3** concurrent-refresh tests pass (one refresh for 5×401; failure clears once; cookie restore). |
 | 3 | Reservation list ownership | **FIXED** | Customer self / Agent own+assigned / staff org-wide; cancel-request ownership; privacy suite. |
 | 4 | Document list + signed URL ownership | **FIXED** | AGENT_VISIBLE org packs; CUSTOMER_PROFILE_RELATED scoped to assigned customers for **list and download**; Agent2 ID guess denied. |
@@ -241,7 +242,7 @@ After rebuild with `BigIntJsonInterceptor` + service `toString()`: same endpoint
 | `@bhairava/api` (incl. ownership-audit + prior privacy) | **85/85** pass (14 suites) |
 | Clean workspace package order → API build | **PASS** (`domain` → `permissions` → `prisma generate` → `api`) |
 | `@bhairava/agent-web` / `@bhairava/customer-web` production build | **PASS** |
-| Docker image build + container `/health` `/ready` | **DEFERRED** — Docker not installed on cloud VM; Windows staging coordinator re-run |
+| Docker image build + container `/health` `/ready` | **PASS (Windows)** — `bhairava-api:staging-verify` sha256:96a5b58d…; health/ready 200 on `:14001` against staging postgres/redis/minio |
 
 ### Q.3 Expanded privacy / ownership audit coverage
 
@@ -259,7 +260,7 @@ New `services/api/src/privacy/ownership-audit.spec.ts` covers negative cases for
 - **Local isolated staging UAT (tip with BigInt + attribution):** technically successful (**CONDITIONAL YES**, local-only).
 - **Internet-facing staging / production promotion:** **NO** until DNS/TLS, external notification credentials, and explicit merge/production authorization.
 - **PR #10 remains OPEN and unmerged.** Do not merge. Do not deploy production. Do not publish stores.
-- **Security review remediation (Q):** code + automated suite green on cloud VM; live Windows staging re-verify (incl. Docker health/ready) remains with coordinator after push.
+- **Security review remediation (Q):** code + automated suite green; **Windows coordinator re-verify complete** — Docker clean build + container health/ready, host staging restart, UAT 54/54, concurrency 201+409, web/mobile gates green. **Do not merge PR #10.**
 
 ## P. Artifacts (gitignored)
 
@@ -267,3 +268,36 @@ New `services/api/src/privacy/ownership-audit.spec.ts` covers negative cases for
 - `artifacts/staging/concurrency-results.json` — 201+409
 - `artifacts/staging/credentials.md`, `.env.staging.local` — local secrets only
 
+## R. Windows coordinator re-verify (2026-09-25 17:24 IST)
+
+Machine `b1a1fbdb-c95f-4dec-bacb-6d16fae8d5c5` (Vijay). Branch `feat/production-platform` @ pre-push tip `dc7c855+`.
+
+| Check | Result |
+|-------|--------|
+| `git pull --ff-only` | Already up to date @ `dc7c855` |
+| Clean Docker API build (`--no-cache`) | **PASS** — `bhairava-api:staging-verify` |
+| Docker container `/api/health` `/api/ready` | **PASS** — both 200 on `:14001` via staging network |
+| Host staging API/worker restart (tip build) | **PASS** — `:14000` health/ready 200 |
+| `prisma migrate deploy` (staging) | **PASS** — applied `20260925120000_receipt_counter` |
+| Secret scan | `ok: true`, `blockedCount: 0` |
+| Domain / api-client / api tests | **14 / 3 / 85** pass |
+| Staging UAT harness | **54/54** pass |
+| Reservation concurrency | **201 + 409** (no 500) |
+| Admin / Agent / Customer web builds | **PASS** |
+| Agent + customer mobile `tsc --noEmit` | **PASS** |
+| Worker Prisma JSON typing after generate | **FIXED** — `payloadJson: Prisma.InputJsonValue` |
+
+### R.1 Finding status (Windows evidence)
+
+| # | Finding | Status |
+|---|---------|--------|
+| 1 | Docker API builds workspace `dist/` packages | **FIXED + PROVEN** (clean image build + health/ready) |
+| 2 | Serialize concurrent token refresh | **FIXED** (api-client 3/3) |
+| 3 | Reservation list ownership | **FIXED** (api 85 + UAT isolation) |
+| 4 | Document list + signed URL ownership | **FIXED** (UAT list roles + signed URL; sizeBytes string) |
+| 5 | Agent payment ownership | **FIXED** (ownership-audit in api 85) |
+| 6 | Reservation→booking customer match | **FIXED** (ownership-audit + UAT booking path) |
+| 7 | Web session restoration | **FIXED** (api-client cookie restore + web builds) |
+| 8 | Atomic receipt numbers | **FIXED** (migration applied on staging; UAT receipt PDF 200) |
+
+**Do not merge PR #10. Do not deploy production. Do not publish stores.**
