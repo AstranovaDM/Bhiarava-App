@@ -4,7 +4,7 @@
 **Follow-up (local staging re-verify):** 2026-09-25 16:40 Asia/Calcutta (IST) — BigInt + agent attribution confirmed on isolated stack @ `aa8f6fb`; harness + report push follows
 **Security suite (cloud agent):** 2026-09-25 — PR #10 review findings 1–8 remediated; domain 14 + api-client 3 + api 85 tests green
 **Windows Docker API verify (coordinator):** 2026-09-25 17:24 Asia/Calcutta (IST) — clean `docker build --no-cache` of `Dockerfile.api` -> image `bhairava-api:staging-verify`; container `/api/health`+`/api/ready` 200 on staging net; host staging restarted; UAT **54/54**; concurrency 201+409; domain 14 + api-client 3 + api 85; web builds + mobile tsc green
-**Branch tip:** (pinned in follow-up docs commit after Windows Docker/UAT re-verify on `feat/production-platform`)
+**Branch tip:** `d1274a4bcebdbb87c926611abc424f44e1ff27d2` (`d1274a4`) on `feat/production-platform` — Windows Docker/UAT re-verify (findings 1–8)
 **PR:** https://github.com/BadhulaVijaybhaskar/bhairava-App/pull/10 — **OPEN / NOT MERGED**  
 **RC tag:** `bhairava-production-rc1` @ `e29ec71`  
 **Machine:** Windows (Vijay) — local isolated staging; cloud agent verified unit/API/security suite + clean workspace API build  
