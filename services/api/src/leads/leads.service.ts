@@ -56,9 +56,15 @@ export class LeadsService {
   }
 
   async updateStage(actor: AuthPrincipal, id: string, stage: string, notes?: string) {
-    const lead = await this.prisma.lead.findFirst({
-      where: { id, organizationId: actor.organizationId },
-    });
+    const where: Prisma.LeadWhereInput = { id, organizationId: actor.organizationId };
+    if (actor.roleCode === 'AGENT') {
+      const agent = await this.prisma.agentProfile.findFirst({
+        where: { userId: actor.userId, organizationId: actor.organizationId },
+      });
+      if (!agent) throw new NotFoundException('Lead not found');
+      if (!agent.allAgentsAccess) where.agentId = agent.id;
+    }
+    const lead = await this.prisma.lead.findFirst({ where });
     if (!lead) throw new NotFoundException('Lead not found');
     if (!(Object.values(LeadStage) as string[]).includes(stage)) {
       throw new BadRequestException('Invalid stage');

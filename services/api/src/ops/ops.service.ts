@@ -12,6 +12,11 @@ import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import type { AuthPrincipal } from '../auth/auth.types';
 import { buildReceiptPdf, amountInWordsInr } from './receipt-pdf';
+import {
+  agentOwnedReceiptWhere,
+  agentOwnedScheduleWhere,
+  resolveAgentScope,
+} from '../common/ownership/record-scope';
 
 @Injectable()
 export class OpsService {
@@ -42,16 +47,14 @@ export class OpsService {
   }
 
   async receipts(actor: AuthPrincipal) {
-    const where: any = { organizationId: actor.organizationId };
+    const where: Prisma.ReceiptWhereInput = { organizationId: actor.organizationId };
     if (actor.roleCode === 'CUSTOMER') {
       where.booking = { customer: { userId: actor.userId } };
     } else if (actor.roleCode === 'AGENT') {
-      const agent = await this.prisma.agentProfile.findFirst({
-        where: { userId: actor.userId, organizationId: actor.organizationId },
-      });
-      if (!agent) return [];
-      if (!agent.allAgentsAccess) {
-        where.booking = { customer: { agentId: agent.id } };
+      const scope = await resolveAgentScope(this.prisma, actor);
+      if (!scope.agentId) return [];
+      if (!scope.allAgentsAccess) {
+        Object.assign(where, agentOwnedReceiptWhere(scope.agentId));
       }
     }
     const rows = await this.prisma.receipt.findMany({
@@ -200,12 +203,21 @@ export class OpsService {
   }
 
   async schedules(actor: AuthPrincipal, bookingId?: string) {
+    const where: Prisma.PaymentScheduleItemWhereInput = {
+      organizationId: actor.organizationId,
+      ...(bookingId ? { bookingId } : {}),
+    };
+    if (actor.roleCode === 'CUSTOMER') {
+      where.customer = { userId: actor.userId };
+    } else if (actor.roleCode === 'AGENT') {
+      const scope = await resolveAgentScope(this.prisma, actor);
+      if (!scope.agentId) return [];
+      if (!scope.allAgentsAccess) {
+        Object.assign(where, agentOwnedScheduleWhere(scope.agentId));
+      }
+    }
     const rows = await this.prisma.paymentScheduleItem.findMany({
-      where: {
-        organizationId: actor.organizationId,
-        ...(bookingId ? { bookingId } : {}),
-        ...(actor.roleCode === 'CUSTOMER' ? { customer: { userId: actor.userId } } : {}),
-      },
+      where,
       orderBy: [{ dueDate: 'asc' }],
       take: 300,
     });
@@ -271,9 +283,22 @@ export class OpsService {
     return created.map((r) => ({ ...r, amountDuePaise: r.amountDuePaise.toString() }));
   }
 
-  registrations(actor: AuthPrincipal) {
+  async registrations(actor: AuthPrincipal) {
+    const where: Prisma.RegistrationWhereInput = { organizationId: actor.organizationId };
+    if (actor.roleCode === 'CUSTOMER') {
+      where.customer = { userId: actor.userId };
+    } else if (actor.roleCode === 'AGENT') {
+      const scope = await resolveAgentScope(this.prisma, actor);
+      if (!scope.agentId) return [];
+      if (!scope.allAgentsAccess) {
+        where.OR = [
+          { customer: { agentId: scope.agentId } },
+          { booking: { agentId: scope.agentId } },
+        ];
+      }
+    }
     return this.prisma.registration.findMany({
-      where: { organizationId: actor.organizationId },
+      where,
       orderBy: { updatedAt: 'desc' },
       take: 200,
       include: {
@@ -397,8 +422,18 @@ export class OpsService {
   }
 
   async resales(actor: AuthPrincipal) {
+    const where: Prisma.ResaleListingWhereInput = { organizationId: actor.organizationId };
+    if (actor.roleCode === 'CUSTOMER') {
+      where.customer = { userId: actor.userId };
+    } else if (actor.roleCode === 'AGENT') {
+      const scope = await resolveAgentScope(this.prisma, actor);
+      if (!scope.agentId) return [];
+      if (!scope.allAgentsAccess) {
+        where.customer = { agentId: scope.agentId };
+      }
+    }
     const rows = await this.prisma.resaleListing.findMany({
-      where: { organizationId: actor.organizationId },
+      where,
       orderBy: { updatedAt: 'desc' },
       take: 200,
       include: {

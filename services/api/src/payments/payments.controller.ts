@@ -35,6 +35,12 @@ export class PaymentsController {
     return this.payments.list(user, { bookingId, projectId });
   }
 
+  @Get(':id')
+  @RequirePermissions('finance.view')
+  get(@CurrentUser() user: AuthPrincipal, @Param('id') id: string) {
+    return this.payments.get(user, id);
+  }
+
   @Post()
   @RequirePermissions('finance.operate')
   create(@CurrentUser() user: AuthPrincipal, @Body() dto: CreatePaymentDto) {

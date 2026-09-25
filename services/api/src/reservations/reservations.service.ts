@@ -296,9 +296,29 @@ export class ReservationsService {
   async requestCancel(actor: AuthPrincipal, id: string, reason?: string) {
     const row = await this.prisma.reservation.findFirst({
       where: { id, organizationId: actor.organizationId },
-      include: { customer: { select: { userId: true, name: true } } },
+      include: { customer: { select: { userId: true, name: true, agentId: true } } },
     });
     if (!row) throw new NotFoundException('Reservation not found');
+
+    if (actor.roleCode === 'CUSTOMER') {
+      if (!row.customer?.userId || row.customer.userId !== actor.userId) {
+        throw new NotFoundException('Reservation not found');
+      }
+    }
+    if (actor.roleCode === 'AGENT') {
+      const agent = await this.prisma.agentProfile.findFirst({
+        where: { userId: actor.userId, organizationId: actor.organizationId },
+      });
+      if (!agent) throw new NotFoundException('Reservation not found');
+      if (
+        !agent.allAgentsAccess &&
+        row.agentId !== agent.id &&
+        row.customer?.agentId !== agent.id
+      ) {
+        throw new NotFoundException('Reservation not found');
+      }
+    }
+
     if (row.state !== ReservationState.ACTIVE) throw new BadRequestException('Reservation is not active');
     const updated = await this.prisma.reservation.update({
       where: { id },

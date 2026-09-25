@@ -241,6 +241,25 @@ export class BookingsService {
           if (reservation.state !== ReservationState.ACTIVE && reservation.state !== ReservationState.EXPIRING_TODAY) {
             throw new ConflictException(`Reservation is ${reservation.state}`);
           }
+          // Reservation → booking must preserve the same customer (no cross-customer convert)
+          if (reservation.customerId !== input.customerId) {
+            throw new BadRequestException(
+              'Reservation customer does not match booking customer',
+            );
+          }
+          if (actor.roleCode === 'AGENT' && resolvedAgentId) {
+            const reservationCustomer = await tx.customer.findFirst({
+              where: { id: reservation.customerId, organizationId: actor.organizationId },
+            });
+            if (
+              reservation.agentId &&
+              reservation.agentId !== resolvedAgentId &&
+              reservationCustomer?.agentId &&
+              reservationCustomer.agentId !== resolvedAgentId
+            ) {
+              throw new NotFoundException('Reservation not found');
+            }
+          }
           await tx.reservation.update({
             where: { id: reservation.id },
             data: { state: ReservationState.CONVERTED },

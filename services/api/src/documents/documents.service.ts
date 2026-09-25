@@ -4,6 +4,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import type { AuthPrincipal } from '../auth/auth.types';
+import {
+  agentOwnedDocumentWhere,
+  resolveAgentScope,
+} from '../common/ownership/record-scope';
 
 @Injectable()
 export class DocumentsService {
@@ -36,6 +40,13 @@ export class DocumentsService {
     if (q.customerId) where.customerId = q.customerId;
     if (actor.roleCode === 'CUSTOMER') {
       where.customer = { userId: actor.userId };
+    } else if (actor.roleCode === 'AGENT') {
+      const scope = await resolveAgentScope(this.prisma, actor);
+      if (!scope.agentId) return [];
+      if (!scope.allAgentsAccess) {
+        // AND ownership with visibility already constrained above
+        Object.assign(where, agentOwnedDocumentWhere(scope.agentId));
+      }
     }
     const rows = await this.prisma.document.findMany({
       where,
@@ -110,11 +121,15 @@ export class DocumentsService {
     };
   }
 
-  async download(actor: AuthPrincipal, id: string) {
-    const doc = await this.prisma.document.findFirst({
-      where: { id, organizationId: actor.organizationId, archivedAt: null },
-    });
-    if (!doc) throw new NotFoundException('Document not found');
+  private async assertCanAccessDocument(
+    actor: AuthPrincipal,
+    doc: {
+      id: string;
+      visibility: DocumentVisibility;
+      customerId: string | null;
+      bookingId: string | null;
+    },
+  ) {
     if (!this.visibilityFor(actor).includes(doc.visibility)) {
       throw new ForbiddenException('Not allowed');
     }
@@ -123,7 +138,40 @@ export class DocumentsService {
         where: { id: doc.customerId ?? '__none__', userId: actor.userId },
       });
       if (!owned) throw new ForbiddenException('Not allowed');
+      return;
     }
+    if (actor.roleCode === 'AGENT') {
+      if (doc.visibility === DocumentVisibility.AGENT_VISIBLE) return;
+      const scope = await resolveAgentScope(this.prisma, actor);
+      if (!scope.agentId) throw new ForbiddenException('Not allowed');
+      if (scope.allAgentsAccess) return;
+      let allowed = false;
+      if (doc.customerId) {
+        const cust = await this.prisma.customer.findFirst({
+          where: { id: doc.customerId, organizationId: actor.organizationId, agentId: scope.agentId },
+        });
+        allowed = !!cust;
+      }
+      if (!allowed && doc.bookingId) {
+        const booking = await this.prisma.booking.findFirst({
+          where: {
+            id: doc.bookingId,
+            organizationId: actor.organizationId,
+            OR: [{ agentId: scope.agentId }, { customer: { agentId: scope.agentId } }],
+          },
+        });
+        allowed = !!booking;
+      }
+      if (!allowed) throw new ForbiddenException('Not allowed');
+    }
+  }
+
+  async download(actor: AuthPrincipal, id: string) {
+    const doc = await this.prisma.document.findFirst({
+      where: { id, organizationId: actor.organizationId, archivedAt: null },
+    });
+    if (!doc) throw new NotFoundException('Document not found');
+    await this.assertCanAccessDocument(actor, doc);
     const dl = await this.storage.getDownloadUrl(doc.storageKey);
     return { document: { id: doc.id, title: doc.title, mimeType: doc.mimeType, version: doc.version }, download: dl };
   }
