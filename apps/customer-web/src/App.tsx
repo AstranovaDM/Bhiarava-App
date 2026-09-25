@@ -1,8 +1,9 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
-import { api, tokens } from './api';
+import { acceptSession, api, tokens } from './api';
 
 type Row = Record<string, any>;
+type AuthBootState = 'AUTH_INITIALIZING' | 'AUTHENTICATED' | 'UNAUTHENTICATED';
 
 function useRows(loader: () => Promise<Row[]>) {
   const [rows, setRows] = useState<Row[]>([]);
@@ -22,7 +23,7 @@ function Login() {
     e.preventDefault();
     try {
       const s = await api.auth.login(email, password);
-      await tokens.setTokens(s.accessToken, s.refreshToken ?? null);
+      await acceptSession(s);
       nav('/');
     } catch (ex: any) {
       setErr(ex.message || 'Login failed');
@@ -43,12 +44,29 @@ function Login() {
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
-  const [ok, setOk] = useState<boolean | null>(null);
+  const [boot, setBoot] = useState<AuthBootState>('AUTH_INITIALIZING');
   useEffect(() => {
-    void Promise.resolve(tokens.getAccessToken()).then((t: string | null) => setOk(!!t));
+    let cancelled = false;
+    (async () => {
+      try {
+        const access = await tokens.getAccessToken();
+        if (access) {
+          if (!cancelled) setBoot('AUTHENTICATED');
+          return;
+        }
+        // Empty in-memory access after refresh/new tab — restore via HTTP-only cookie.
+        const restored = await api.auth.restoreSession();
+        if (!cancelled) setBoot(restored ? 'AUTHENTICATED' : 'UNAUTHENTICATED');
+      } catch {
+        if (!cancelled) setBoot('UNAUTHENTICATED');
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
-  if (ok === null) return null;
-  if (!ok) return <Navigate to="/login" replace />;
+  if (boot === 'AUTH_INITIALIZING') {
+    return <div className="card login" data-testid="auth-initializing">Restoring session…</div>;
+  }
+  if (boot === 'UNAUTHENTICATED') return <Navigate to="/login" replace />;
   return (
     <div className="shell">
       <aside className="nav">
