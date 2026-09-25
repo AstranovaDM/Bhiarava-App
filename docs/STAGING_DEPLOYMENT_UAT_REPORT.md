@@ -2,7 +2,7 @@
 
 **Date (IST):** 2026-09-25 15:43:49 Asia/Calcutta (original local UAT)  
 **Follow-up (cloud agent):** 2026-09-25 — BigInt serialization + agent booking attribution fixes  
-**Branch tip:** see latest `feat/production-platform` (this edit lands with the fix commits)  
+**Branch tip:** `bad50c6` (`feat/production-platform`) — BigInt JSON + agent booking attribution fixes  
 **PR:** https://github.com/BadhulaVijaybhaskar/bhairava-App/pull/10 — **OPEN / NOT MERGED**  
 **RC tag:** `bhairava-production-rc1` @ `e29ec71`  
 **Machine:** Windows (Vijay) — local isolated staging; cloud agent verified unit/API tests only  
