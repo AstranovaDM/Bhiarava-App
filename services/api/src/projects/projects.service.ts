@@ -44,18 +44,28 @@ export class ProjectsService {
     if (!project) throw new NotFoundException('Project not found');
     if (actor.roleCode === 'AGENT' && !project.agentVisible) throw new NotFoundException('Project not found');
     if (actor.roleCode === 'CUSTOMER' && !project.customerListed) throw new NotFoundException('Project not found');
+    const plotTypes = Array.isArray(project.plotTypes) ? project.plotTypes : [];
+    const amenities = Array.isArray(project.amenities) ? project.amenities : [];
+    const phases = Array.isArray(project.phases) ? project.phases : [];
+    const blocks = Array.isArray(project.blocks) ? project.blocks : [];
+    const layouts = Array.isArray(project.layouts) ? project.layouts : [];
     return {
       ...project,
-      plotTypes: project.plotTypes.map((pt) => ({
+      plotTypes: plotTypes.map((pt) => ({
         ...pt,
-        areaSqYd: pt.areaSqYd?.toString?.() ?? String(pt.areaSqYd),
+        areaSqYd: pt.areaSqYd?.toString?.() ?? (pt.areaSqYd == null ? null : String(pt.areaSqYd)),
         lengthFt: pt.lengthFt?.toString?.() ?? null,
         widthFt: pt.widthFt?.toString?.() ?? null,
       })),
+      amenities,
+      phases,
+      blocks,
+      layouts,
       pricingRules: project.pricingRules
         ? {
             ...project.pricingRules,
-            baseRatePerSqYd: project.pricingRules.baseRatePerSqYd.toString(),
+            baseRatePerSqYd: project.pricingRules.baseRatePerSqYd?.toString?.()
+              ?? String(project.pricingRules.baseRatePerSqYd ?? '0'),
           }
         : null,
     };
@@ -102,28 +112,28 @@ export class ProjectsService {
     return {
       project: {
         id: project.id,
-        name: project.name,
-        code: project.code,
-        city: project.city,
-        state: project.state,
-        location: project.location,
-        address: project.address,
-        description: project.description,
-        reraNumber: project.reraNumber,
-        projectType: project.projectType,
-        pincode: project.pincode,
-        lifecycleStatus: project.lifecycleStatus,
-        agentVisible: project.agentVisible,
-        customerListed: project.customerListed,
-        resaleAvailable: project.resaleAvailable,
-        settingsJson: project.settingsJson,
+        name: project.name ?? '',
+        code: project.code ?? '',
+        city: project.city ?? null,
+        state: project.state ?? null,
+        location: project.location ?? null,
+        address: project.address ?? null,
+        description: project.description ?? null,
+        reraNumber: project.reraNumber ?? null,
+        projectType: project.projectType ?? null,
+        pincode: project.pincode ?? null,
+        lifecycleStatus: project.lifecycleStatus ?? null,
+        agentVisible: Boolean(project.agentVisible),
+        customerListed: Boolean(project.customerListed),
+        resaleAvailable: Boolean(project.resaleAvailable),
+        settingsJson: project.settingsJson ?? {},
       },
-      plotTypes: project.plotTypes,
-      pricingRules: project.pricingRules,
-      amenities: project.amenities,
-      phases: project.phases,
-      blocks: project.blocks,
-      layouts: project.layouts,
+      plotTypes: Array.isArray(project.plotTypes) ? project.plotTypes : [],
+      pricingRules: project.pricingRules ?? null,
+      amenities: Array.isArray(project.amenities) ? project.amenities : [],
+      phases: Array.isArray(project.phases) ? project.phases : [],
+      blocks: Array.isArray(project.blocks) ? project.blocks : [],
+      layouts: Array.isArray(project.layouts) ? project.layouts : [],
     };
   }
 

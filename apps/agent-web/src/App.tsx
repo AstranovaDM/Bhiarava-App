@@ -19,6 +19,7 @@ import {
 import { AppShell, LoadingState, type NavGroup, type NavItem } from '@bhairava/ui-web';
 import type { PublicUser } from '@bhairava/api-client';
 import { api, tokens } from './api';
+import { appPath } from './basePath';
 import { SessionContext, UNREAD_CAP, type AgentSession } from './session';
 import { LoginPage } from './pages/Login';
 import { HomePage } from './pages/Home';
@@ -85,7 +86,7 @@ async function signOut() {
     await api.auth.logout();
   } catch {}
   await tokens.clear();
-  location.href = '/login';
+  location.href = appPath('/login');
 }
 
 /** Resolves the session before any authenticated screen renders. */
