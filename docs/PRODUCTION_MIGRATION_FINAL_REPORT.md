@@ -1,18 +1,19 @@
-# Bhairava Production Migration — Final Report
+﻿# Bhairava Production Migration — Final Report
 
 **Branch:** `feat/production-platform`  
-**Date:** 2026-09-25 IST (continuation after executor crash)  
+**Date:** 2026-09-25 IST  
 **Machine:** Windows `b1a1fbdb-c95f-4dec-bacb-6d16fae8d5c5`  
-**Baseline:** `bd342fe` (preserved)  
-**Prior tip:** `6c59a85`  
-**Demo password (seed):** `Demo@12345` (`packages/database/prisma/seed.ts`)
+**Path:** `C:\Users\HP\Downloads\Bhairava App`  
+**Baseline tip preserved before this wave:** `6c59a85`  
+**Current tip:** `44b09b6` + report amend below  
+**Demo password (seed only):** `Demo@12345` (`packages/database/prisma/seed.ts`)
 
 ## Status legend
 
 | Label | Meaning |
 |-------|---------|
 | **PRODUCTION VERIFIED** | Implemented and proven in this environment |
-| **IMPLEMENTED — NEEDS ENVIRONMENT VERIFICATION** | Code/docs ready; live infra not available to prove |
+| **IMPLEMENTED — NEEDS ENVIRONMENT VERIFICATION** | Code/docs ready; live device/infra not proven here |
 | **BLOCKED BY EXTERNAL CREDENTIAL** | Waiting on secrets/accounts not in repo |
 | **NOT COMPLETE** | Still open / out of scope for this wave |
 
@@ -27,19 +28,19 @@
 **PRODUCTION VERIFIED**
 
 ### 3. Nest API bootstrap
-**PRODUCTION VERIFIED** — rebuilt via `tsc` (nest incremental+`deleteOutDir` can wipe empty dist); `start:prod` on :4000 (`/api/health` ok)
+**PRODUCTION VERIFIED** — local: wipe `tsconfig.tsbuildinfo` then `npx tsc -p services/api/tsconfig.json`; `node dist/main.js` with `NODE_ENV=development` (COOKIE_SECURE=false). Health `http://127.0.0.1:4000/api/health` ok.
 
 ### 4. Domain package
-**PRODUCTION VERIFIED** — **14/14** pass; explicit named re-exports for Vite CJS interop
+**PRODUCTION VERIFIED** — **14/14** (`npm run test -w @bhairava/domain`)
 
 ### 5. Auth
-**PRODUCTION VERIFIED** — prior live E2E 36/36
+**PRODUCTION VERIFIED** — prior live E2E + Phase J logins
 
 ### 6. RBAC
-**PRODUCTION VERIFIED** (matrix/unit) / live HTTP covered by app smokes
+**PRODUCTION VERIFIED** (matrix/unit) / live HTTP covered by smokes
 
 ### 7. Reserve FOR UPDATE + concurrency
-**PRODUCTION VERIFIED** — `node scripts/e2e/assert-409-reserve.mjs` → statuses `[201,409]`, no 500
+**PRODUCTION VERIFIED** — `node scripts/e2e/assert-409-reserve.mjs` → `[201,409]`, no 500
 
 ### 8. Booking + rollback
 **PRODUCTION VERIFIED** — live-cde double-book 409
@@ -48,7 +49,7 @@
 **PRODUCTION VERIFIED** (BullMQ previously live)
 
 ### 10. Finance soft-void / adjust
-**PRODUCTION VERIFIED**
+**PRODUCTION VERIFIED** — payment create stringifies BigInt + auto-issues receipt (`RCP-000001` style)
 
 ### 11. Storage MinIO
 **PRODUCTION VERIFIED**
@@ -57,20 +58,21 @@
 **PRODUCTION VERIFIED**
 
 ### 13. Layout domain / polygon uniqueness
-**PRODUCTION VERIFIED** — domain helpers + live API polygon set/clear
+**PRODUCTION VERIFIED** — domain helpers + live `POST/DELETE /api/plots/:id/polygon` (SetPolygonDto `points` uses `@Allow() @IsArray()` so whitelist keeps vertices). Plot A-09 mapped 4 verts live.
 
 ### 14. Admin / Agent / Customer web
-**PRODUCTION VERIFIED** (builds + live APIs) / **partial** MAIN pixel parity  
-- **Layout canvas:** interactive SVG map editor ported into admin-web (`PlotCanvas.tsx` + Layouts page) on live plot/layout APIs; hit-testing via `clientToNormMeet` + `viewBox 0 0 100 100` / `xMidYMid meet`. Admin `vite build` pass.  
-- Agent-web + customer-web `vite build` pass.  
-- Remaining visual density (print receipts templates, full onboarding wizards) still MAIN SoT.
+**PRODUCTION VERIFIED** (builds + live APIs) / MAIN dense pixel parity **NOT COMPLETE**  
+- Interactive SVG layout editor in `@bhairava/admin-web` (`PlotCanvas.tsx` + Layouts page) on live layout/plot APIs.  
+- Hit-testing: `clientToNormMeet` + `viewBox 0 0 100 100` + `preserveAspectRatio="xMidYMid meet"`.  
+- Admin/agent/customer `vite build` pass.  
+- Remaining MAIN-only density (print receipt templates, full onboarding wizards) → **NOT COMPLETE**.
 
 ### 15. Expo mobiles + SecureStore
-**PRODUCTION VERIFIED** (web export) / signing **BLOCKED BY EXTERNAL CREDENTIAL**  
-- Added `react-native-web` + `@expo/metro-runtime` peers (install with `--legacy-peer-deps`).  
-- `npx expo export --platform web` succeeded for agent-mobile and customer-mobile.  
-- SecureStore token stores unchanged (`apps/*/src/secureTokens.ts`).  
-- EAS / Apple / Play signing still **BLOCKED BY EXTERNAL CREDENTIAL**.
+Web export **PRODUCTION VERIFIED**; on-device SecureStore **IMPLEMENTED — NEEDS ENVIRONMENT VERIFICATION**; store signing **BLOCKED BY EXTERNAL CREDENTIAL**  
+- Peers added: `react-native-web` + `@expo/metro-runtime` on `@bhairava/agent-mobile` and `@bhairava/customer-mobile`.  
+- `npx expo export --platform web` succeeded for both (dist emitted).  
+- SecureStore token modules present; API login with seed password proven.  
+- EAS / Apple / Play → **BLOCKED BY EXTERNAL CREDENTIAL**.
 
 ### 16. Typed api-client
 **PRODUCTION VERIFIED**
@@ -89,7 +91,7 @@
 ## Items 20–24 (ops)
 
 ### 20. Env / founder bootstrap / demo seed
-**PRODUCTION VERIFIED** — password `Demo@12345`
+**PRODUCTION VERIFIED** — passwords seed-only; `.env` gitignored
 
 ### 21. Docker compose
 **PRODUCTION VERIFIED** — postgres/redis/minio healthy
@@ -108,8 +110,10 @@
 ## Phase J — Founder→Resale live E2E
 
 **PRODUCTION VERIFIED** — `node scripts/e2e/production-flow.mjs`  
-**31 passed / 0 failed** on shared DB (plot A-10 through REGISTERED → RESALE_AVAILABLE; customer isolation ok).  
-Inventory helper: `scripts/e2e/replenish-available-plots.mjs` (uses `number`, clears `customerId`/`agentId`; SQL replenish A-09..A-20 already applied).
+**31 passed / 0 failed** (Founder→Setup→Plots→Activate→Publish→Lead→Assign→Visit→Customer→Reserve→Book→Schedule→Pay→Receipt→Docs→Under Documentation→Registration→REGISTERED→Resale; agent/customer isolation holds).  
+Replenish helpers (non-destructive):  
+- `scripts/e2e/replenish-available-plots.mjs` (A-09..A-20 upsert AVAILABLE)  
+- `scripts/seed/replenish-available-plots.mjs` (optional net-new plots)
 
 ## Test totals (this machine, 2026-09-25 IST)
 
@@ -117,18 +121,29 @@ Inventory helper: `scripts/e2e/replenish-available-plots.mjs` (uses `number`, cl
 |-------|--------|
 | `@bhairava/domain` | **14 pass / 0 fail** |
 | `@bhairava/api` Jest | **44 pass / 0 fail** (10 suites) |
-| `assert-409-reserve.mjs` | **PRODUCTION VERIFIED** (201 + 409) |
-| `live-cde.mjs` | **PRODUCTION VERIFIED** 26/26 |
-| `production-flow.mjs` (Phase J) | **PRODUCTION VERIFIED** 31/31 |
+| `scripts/e2e/assert-409-reserve.mjs` | **PRODUCTION VERIFIED** (201 + 409) |
+| `scripts/e2e/live-cde.mjs` | **PRODUCTION VERIFIED** 26/26 |
+| `scripts/e2e/production-flow.mjs` | **PRODUCTION VERIFIED** 31/31 |
 | admin/agent/customer `vite build` | **pass** |
 | agent/customer `expo export --platform web` | **pass** |
+| Live polygon set/clear | **PRODUCTION VERIFIED** |
+
+## Cleanup checks
+
+| Check | Result |
+|-------|--------|
+| Demo passwords seed-only | **pass** |
+| `.env` gitignored | **pass** |
+| No localStorage business SoT | **pass** (sessionStorage auth tokens only) |
+| No secrets in frontend | **pass** |
+| No full PAN/Aadhaar in logs | **pass** |
 
 ## Remaining blockers
 
-1. **EAS / Apple / Play signing credentials** for store builds (**BLOCKED BY EXTERNAL CREDENTIAL**).
-2. Dense MAIN-only UX (print receipt templates, full onboarding wizards) — canvas interactive editor is now in admin-web.
+1. **EAS / Apple / Play signing** — **BLOCKED BY EXTERNAL CREDENTIAL**.
+2. Dense MAIN-only UX leftovers (print receipts, full onboarding wizards) — **NOT COMPLETE**.
 3. Production secrets — never ship demo `.env` values.
-4. Nest `deleteOutDir` + incremental can emit empty `dist`; prefer `npx tsc -p services/api/tsconfig.json --incremental false` after wiping `tsconfig.tsbuildinfo`.
+4. Nest incremental + `deleteOutDir` can empty `dist`; prefer plain `tsc` after wiping `tsbuildinfo`.
 
 ## Exact start-stack commands
 
@@ -139,10 +154,9 @@ npm install --legacy-peer-deps
 npm run db:migrate:deploy
 npm run db:seed
 
-# API (avoid empty dist from nest incremental+deleteOutDir)
-Remove-Item services\api\tsconfig.tsbuildinfo, services\api\dist -Recurse -Force -ErrorAction SilentlyContinue
-npx tsc -p services/api/tsconfig.json --incremental false
-# or: npm run build:api  (then verify dist\main.js exists)
+Remove-Item services\api\tsconfig.tsbuildinfo -ErrorAction SilentlyContinue
+npx tsc -p services/api/tsconfig.json
+$env:NODE_ENV='development'; $env:COOKIE_SECURE='false'
 npm run start:prod -w @bhairava/api
 
 npm run dev:worker
@@ -152,10 +166,17 @@ npm run dev:customer-web
 
 npm run test:domain
 npm run test:api
+node scripts/e2e/replenish-available-plots.mjs
 node scripts/e2e/assert-409-reserve.mjs
 node scripts/e2e/live-cde.mjs
 node scripts/e2e/production-flow.mjs
 npm run build -w @bhairava/admin-web
-npx expo export --platform web --prefix apps/agent-mobile
-npx expo export --platform web --prefix apps/customer-mobile
+cd apps\agent-mobile; npx expo export --platform web; cd ..\..
+cd apps\customer-mobile; npx expo export --platform web; cd ..\..
 ```
+
+## Constraints honored
+
+- No git push
+- No new product features beyond production migration parity
+- Small local commits only
