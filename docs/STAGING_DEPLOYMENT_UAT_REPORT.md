@@ -3,7 +3,7 @@
 **Date (IST):** 2026-09-25 15:43:49 Asia/Calcutta (original local UAT)
 **Follow-up (local staging re-verify):** 2026-09-25 16:40 Asia/Calcutta (IST) — BigInt + agent attribution confirmed on isolated stack @ `aa8f6fb`; harness + report push follows
 **Security suite (cloud agent):** 2026-09-25 — PR #10 review findings 1–8 remediated; domain 14 + api-client 3 + api 85 tests green
-**Branch tip:** (see latest commit on `feat/production-platform` after security suite push)
+**Branch tip:** `fabd8df47a0cc94068235f06d978b430e6531601` (`fabd8df`) on `feat/production-platform` — PR #10 security suite (findings 1–8) 
 **PR:** https://github.com/BadhulaVijaybhaskar/bhairava-App/pull/10 — **OPEN / NOT MERGED**  
 **RC tag:** `bhairava-production-rc1` @ `e29ec71`  
 **Machine:** Windows (Vijay) — local isolated staging; cloud agent verified unit/API/security suite + clean workspace API build  
