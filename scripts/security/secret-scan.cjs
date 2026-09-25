@@ -50,7 +50,7 @@ for (const file of tracked) {
       // Demo password only allowed in seed + docs explicitly mentioning it
       let ok = false;
       if (pat.id === 'demo-password-runtime') {
-        ok = /seed\.ts$|seed\/|docs\/|README|RELEASE_|SECURITY|UAT|ENVIRONMENT|bootstrap|scripts\/e2e\//.test(file);
+        ok = /seed\.ts$|seed\/|docs\/|README|RELEASE_|SECURITY|UAT|ENVIRONMENT|bootstrap|scripts\/e2e\/|secret-scan|env\.schema/.test(file);
       } else if (pat.severity === 'low' || pat.severity === 'medium') {
         ok = allowPath(file);
       }

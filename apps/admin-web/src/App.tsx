@@ -289,14 +289,14 @@ function ProjectWorkspace() {
         {tab === 'overview' && (
           <div>
             <p>Lifecycle: <span className="chip">{project?.lifecycleStatus || project?.status}</span></p>
-            <p className="muted">Mutations go through production API. MAIN remains visual SoT for dense widgets.</p>
+            <p className="muted">Mutations go through production API. Monorepo apps/* is production SoT.</p>
             <p><Link to={`/projects/${projectId}/plots`}>Open plot inventory â†’</Link></p>
           </div>
         )}
         {tab === 'documents' && <DocumentsPage projectId={projectId} />}
         {tab !== 'overview' && tab !== 'documents' && (
           <p className="muted">
-            â€œ{tab}â€ maps to MAIN project workspace tabs. Persist via PATCH /api/projects/:id â€” no localStorage business SoT.
+            â€œ{tab}â€ maps to production project workspace tabs. Persist via PATCH /api/projects/:id â€” no localStorage business SoT.
           </p>
         )}
       </div>
