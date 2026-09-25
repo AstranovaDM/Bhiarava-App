@@ -34,10 +34,12 @@ export {
   inkForPlotStatus,
   canonicalPlotStatusFill,
   canonicalPlotStatusSolid,
+  canonicalPlotStatusInk,
   canonicalPlotStatusLabel,
 } from './plot-status-colors';
 export {
   PLOT_STATUSES,
+  PLOT_STATUS_LABEL,
   toCanonicalPlotStatus,
   type CanonicalPlotStatus,
 } from './plot-status';

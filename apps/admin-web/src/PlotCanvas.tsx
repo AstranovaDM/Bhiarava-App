@@ -1,4 +1,5 @@
 ﻿import { useCallback, useEffect, useRef, useState } from 'react';
+import { Maximize2, Minus, Plus } from 'lucide-react';
 import {
   LAYOUT_VIEWBOX,
   PLOT_STATUSES,
@@ -43,6 +44,9 @@ type Props = {
 
 const MIN_ZOOM = 0.6;
 const MAX_ZOOM = 8;
+
+const zoomBtn =
+  'grid h-8 w-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-surface-c hover:text-foreground';
 
 function pointsOf(plot: CanvasPlot): NormPoint[] | null {
   const raw = plot.polygonJson;
@@ -297,17 +301,17 @@ export function PlotCanvas({
       </svg>
 
       {!hasImage && (
-        <div className="plot-canvas-empty">
-          <p><strong>No master plan underlay</strong></p>
-          <p className="muted">Grid fallback — polygons still map in 0–100 viewBox with xMidYMid meet hit-testing.</p>
+        <div className="plot-canvas-empty px-6">
+          <p className="font-display text-sm font-semibold text-foreground">No master plan underlay</p>
+          <p className="pt-1 text-xs">Grid fallback — polygons still map in 0–100 viewBox with xMidYMid meet hit-testing.</p>
         </div>
       )}
 
-      <div className="plot-canvas-legend">
+      <div className="plot-canvas-legend" onPointerDown={(e) => e.stopPropagation()}>
         <p className="k">Legend</p>
         <div className="plot-canvas-legend-row">
-          {PLOT_STATUSES.map((s) => (
-            <span key={s} className="plot-canvas-legend-item">
+          {PLOT_STATUSES.map((s: CanonicalPlotStatus) => (
+            <span key={s} className="plot-canvas-legend-item text-foreground">
               <span className="swatch" style={{ background: canonicalPlotStatusFill[s] }} />
               {canonicalPlotStatusLabel[s]}
             </span>
@@ -315,17 +319,28 @@ export function PlotCanvas({
         </div>
       </div>
 
-      <div className="plot-canvas-zoom">
-        <button type="button" className="btn ghost" onClick={() => stepZoom(-1)}>-</button>
-        <span>{Math.round(zoom * 100)}%</span>
-        <button type="button" className="btn ghost" onClick={() => stepZoom(1)}>+</button>
-        <button type="button" className="btn ghost" onClick={reset} title="Reset zoom">Reset</button>
+      <div
+        className="plot-canvas-zoom"
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+        onDoubleClick={(e) => e.stopPropagation()}
+      >
+        <button type="button" className={zoomBtn} onClick={() => stepZoom(-1)} aria-label="Zoom out">
+          <Minus className="h-4 w-4" />
+        </button>
+        <span className="numeric min-w-[3.25rem] text-center text-xs font-medium text-muted-foreground">{Math.round(zoom * 100)}%</span>
+        <button type="button" className={zoomBtn} onClick={() => stepZoom(1)} aria-label="Zoom in">
+          <Plus className="h-4 w-4" />
+        </button>
+        <button type="button" className={zoomBtn} onClick={reset} title="Reset zoom" aria-label="Reset zoom">
+          <Maximize2 className="h-4 w-4" />
+        </button>
       </div>
 
       {hover && (
         <div className="plot-canvas-hover">
-          <p><strong>{hover.number}</strong></p>
-          <p className="muted">
+          <p className="numeric font-semibold text-foreground">{hover.number}</p>
+          <p className="text-xs text-muted-foreground">
             {String(hover.areaSqYd ?? '—')} sq.yd · {hover.facing || '—'} · {labelForPlotStatus(hover.status)}
           </p>
         </div>

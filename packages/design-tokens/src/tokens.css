@@ -1,0 +1,170 @@
+/*
+ * Bhairava design tokens as CSS custom properties.
+ * Plain CSS — no Tailwind required. `@bhairava/ui-web/styles.css` imports this
+ * file and maps the variables into the Tailwind v4 theme.
+ *
+ * Values mirror `src/index.ts` (kept in sync by `tokens.test.ts`).
+ * Surface ladder + primary/luminous greens are LOCKED.
+ */
+
+:root {
+  --radius: 0.5rem;
+
+  --font-display-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-sans-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  /* Mobile chrome — shared shell, FAB, and page padding all read these */
+  --mobile-nav-height: 4.25rem;
+  --mobile-nav-offset: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom, 0px));
+  --mobile-content-pad-bottom: calc(var(--mobile-nav-offset) + 1rem);
+  --wizard-action-height: 4.5rem;
+
+  /* Locked tonal surface ladder */
+  --surface: #F8F9FF;
+  --surface-bright: #FFFFFF;
+  --surface-lowest: #FFFFFF;
+  --surface-low: #EFF4FF;
+  --surface-c: #E5EEFF;
+  --surface-high: #D3E4FE;
+  --surface-highest: #D3E4FE;
+  --on-surface-tint: #0D2036;
+
+  --background: var(--surface);
+  --foreground: #0D2036;
+  --card: var(--surface-lowest);
+  --card-foreground: var(--foreground);
+  --popover: var(--surface-lowest);
+  --popover-foreground: var(--foreground);
+
+  /* Locked brand greens */
+  --primary: #006D32;
+  --primary-luminous: #00D166;
+  --primary-foreground: #FFFFFF;
+  --primary-container: #BAECCA;
+  --on-primary-container: #003416;
+
+  --secondary: #116BB5;
+  --secondary-foreground: #F9FCFF;
+  --secondary-container: #C6E1FF;
+
+  --gold: #E4AD3C;
+  --gold-foreground: #462400;
+  --gold-container: #FBE6B3;
+
+  --muted: var(--surface-low);
+  --muted-foreground: #5B6A7D;
+  --accent: var(--surface-c);
+  --accent-foreground: var(--foreground);
+
+  --destructive: #D02B31;
+  --destructive-foreground: #FFF9F8;
+  --warning: #DA950B;
+  --warning-foreground: #3C2200;
+  --success: #00884B;
+  --success-foreground: #FFFFFF;
+
+  --outline-variant: #ABB9CB;
+  --border: color-mix(in oklab, var(--outline-variant) 45%, transparent);
+  --input: color-mix(in oklab, var(--outline-variant) 45%, transparent);
+  --ring: var(--primary);
+
+  --chart-1: #006D32;
+  --chart-2: #2EA2E5;
+  --chart-3: #E4AD3C;
+  --chart-4: #00D166;
+  --chart-5: #153470;
+
+  --sidebar: var(--surface-low);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--surface-c);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: transparent;
+  --sidebar-ring: var(--primary);
+
+  --gradient-primary: linear-gradient(135deg, #006D32 0%, #006D32 35%, #00D166 130%);
+  --gradient-luminous: linear-gradient(135deg, #00D166, #006D32);
+  --gradient-flow: linear-gradient(135deg, var(--secondary), #62C8DF);
+  --gradient-gold: linear-gradient(135deg, #CC8730, #F2CE59);
+
+  /* Plot status — solid (legend/chips), soft fill (layouts), ink (chip text) */
+  --plot-available: #4CAF7D;
+  --plot-available-fill: #BFE5D1;
+  --plot-available-ink: #2E7A52;
+  --plot-reserved: #F2B84B;
+  --plot-reserved-fill: #F6D89A;
+  --plot-reserved-ink: #8A6414;
+  --plot-booked: #3B82F6;
+  --plot-booked-fill: #A9D2FF;
+  --plot-booked-ink: #1D4ED8;
+  --plot-under-documentation: #0EA5E9;
+  --plot-under-documentation-fill: #BAE6FD;
+  --plot-under-documentation-ink: #0369A1;
+  --plot-sold: #6366F1;
+  --plot-sold-fill: #C7D2FE;
+  --plot-sold-ink: #4338CA;
+  --plot-registered: #7657D5;
+  --plot-registered-fill: #C4B5F4;
+  --plot-registered-ink: #4F3AA8;
+  --plot-resale-available: #D85C8A;
+  --plot-resale-available-fill: #F0B6CB;
+  --plot-resale-available-ink: #9A3A62;
+  --plot-blocked: #94A3B8;
+  --plot-blocked-fill: #E2E8F0;
+  --plot-blocked-ink: #475569;
+  --plot-cancelled: #EF4444;
+  --plot-cancelled-fill: #FECACA;
+  --plot-cancelled-ink: #B91C1C;
+  /* MAIN app aliases */
+  --plot-resale: var(--plot-resale-available);
+  --plot-resale-fill: var(--plot-resale-available-fill);
+}
+
+.dark {
+  --surface: #0A1421;
+  --surface-bright: #202F42;
+  --surface-lowest: #030C17;
+  --surface-low: #101B29;
+  --surface-c: #162232;
+  --surface-high: #1E2C3E;
+  --surface-highest: #27374A;
+  --on-surface-tint: #000002;
+
+  --background: var(--surface);
+  --foreground: #EDF2F9;
+  --card: var(--surface-low);
+  --card-foreground: var(--foreground);
+  --popover: var(--surface-low);
+  --popover-foreground: var(--foreground);
+
+  --primary: #00D166;
+  --primary-foreground: #01210F;
+  --primary-container: #00522A;
+  --on-primary-container: #BAECCA;
+
+  --secondary: #53B6EB;
+  --secondary-foreground: #010E1E;
+  --secondary-container: #1B3C5D;
+
+  --gold: #E9BE57;
+  --gold-foreground: #331700;
+  --gold-container: #684600;
+
+  --muted: var(--surface-c);
+  --muted-foreground: #98A6B8;
+  --accent: var(--surface-high);
+  --accent-foreground: var(--foreground);
+
+  --outline-variant: #4A5666;
+  --border: color-mix(in oklab, var(--outline-variant) 45%, transparent);
+  --input: color-mix(in oklab, var(--outline-variant) 55%, transparent);
+
+  --sidebar: var(--surface-lowest);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-accent: var(--surface-c);
+  --sidebar-accent-foreground: var(--foreground);
+
+  /* Dark primary-foreground is dark ink, so the gradient runs on the luminous end. */
+  --gradient-primary: linear-gradient(135deg, #00A04E 0%, #00D166 45%, #5BE59A 100%);
+}
