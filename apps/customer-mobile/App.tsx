@@ -72,7 +72,7 @@ function Login({ onDone }: { onDone: () => void }) {
 
 export default function App() {
   const [authed, setAuthed] = useState<boolean | null>(null);
-  useEffect(() => { tokens.getAccessToken().then((t) => setAuthed(!!t)); }, []);
+  useEffect(() => { void Promise.resolve(tokens.getAccessToken()).then((t: string | null) => setAuthed(!!t)); }, []);
   if (authed === null) return null;
   if (!authed) return <Login onDone={() => setAuthed(true)} />;
   return (

@@ -61,5 +61,9 @@
     "@prisma/engines@6.19.3": true,
     "argon2@0.44.0": true,
     "esbuild@0.28.2": true
+  },
+  "overrides": {
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0"
   }
 }

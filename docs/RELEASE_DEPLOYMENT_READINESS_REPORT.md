@@ -3,7 +3,7 @@
 **Generated:** 2026-09-25 IST  
 **Branch:** `feat/production-platform`  
 **Start tip:** `4a9d5b9`  
-**Current tip (pre-finalize):** `2bf11fa` (`2bf11fa435e542563f8a613516e34a33dbc597c4`) ? final tip is the commit that contains this report; confirm with `git rev-parse HEAD`.
+**Current tip (pre-tsc-fix):** `238cf96` (`238cf964a51fa721762d25feaf6dad0b6abc0397`) ? final tip is the commit containing this update; confirm with `git rev-parse HEAD`.
 **Push status:** **NOT PUSHED** (explicit stop at push boundary)
 
 ## Commits since start tip
@@ -151,7 +151,8 @@ See `docs/EXTERNAL_NOTIFICATIONS.md`.
 |------|--------|
 | App IDs / EAS profiles / SecureStore / env | Ready in repo |
 | Expo Android export | **PASS** (agent + customer) |
-| `tsc --noEmit` | **FAIL** ? known React 19 / `@types/react` duplicate JSX friction in monorepo (export still green) |
+| Expo Web export | **PASS** (agent + customer) |
+| `tsc --noEmit` | **PASS** (agent + customer) |
 | EAS project IDs, Apple certs, Play keystore | **BLOCKED BY EXTERNAL CREDENTIAL** |
 
 See `docs/MOBILE_RELEASE.md`.
@@ -174,7 +175,7 @@ See `docs/MOBILE_RELEASE.md`.
 | API `nest build` | PASS |
 | Agent expo export | PASS |
 | Customer expo export | PASS |
-| Agent/customer `tsc --noEmit` | FAIL (tooling ? see above) |
+| Agent/customer `tsc --noEmit` | **PASS** (unified `@types/react@19.3.0` via root overrides) |
 | MAIN* runtime import into SoT | **0 unexpected path imports** (comment/`className="main"` false positives only). Workspaces exclude MAIN*. Doc: `docs/LEGACY_MAIN.md` |
 
 ---
@@ -185,7 +186,7 @@ See `docs/MOBILE_RELEASE.md`.
 2. **Mobile store signing** (EAS project IDs, Apple, Play) ? blocked until supplied  
 3. **Real production secrets** (JWT, PII key, S3, DB, Redis, CORS origins, domains) ? must be provisioned out-of-band  
 4. **Managed infra deploy** ? not performed (constraint: no external deploy)  
-5. **Mobile typecheck clean** ? React types hoisting (non-blocking for Expo export; fix with single `@types/react` override when convenient)  
+5. ~~**Mobile typecheck clean**~~ ? **RESOLVED** (`tsc --noEmit` PASS for agent + customer)
 6. **Optional:** wire real Email/SMS adapters once credentials exist; replace EAS `REPLACE_WITH_EAS_PROJECT_ID`
 
 ---
@@ -195,6 +196,7 @@ See `docs/MOBILE_RELEASE.md`.
 Verify tip, then:
 
 ```
+238cf96 docs(release): finalize readiness report tip guidance
 2bf11fa docs(release): tip SHA 8b59d83 on readiness report
 8b59d83 docs(release): readiness report + gate fixes (PDF test, scan allowlist, mobile skipLibCheck)
 501ff67 feat(release): receipt PDF, security headers/CORS, staging/prod contracts, bootstrap guards
@@ -223,9 +225,9 @@ c84126f chore(release): hygiene â€” gitignore, untrack QA shots, strip demo
 | 12 | Privacy UAT | DONE |
 | 13 | External notifications | DONE / blocked on credentials |
 | 14 | Mobile release | DONE / signing blocked on credentials |
-| 15 | Final pre-push gate | DONE (typecheck noted) |
+| 15 | Final pre-push gate | DONE (mobile tsc PASS) |
 | 16 | No push + this report | DONE |
 
 ---
 
-*End of report. Gate-time HEAD before finalize commit: `2bf11fa`. Confirm tip with `git rev-parse --short HEAD`.*
+*End of report. Mobile tsc gate closed. Pre-commit HEAD: `238cf96`. Confirm tip with `git rev-parse --short HEAD`.*
