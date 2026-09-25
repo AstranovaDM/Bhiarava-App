@@ -1,5 +1,6 @@
 ﻿/** API-facing re-exports for layout/polygon helpers. */
 export {
+  isMappedPolygon,
   validatePolygon,
   linkPolygonToPlot,
   unlinkPolygonFromPlot,

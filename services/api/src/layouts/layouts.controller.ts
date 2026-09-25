@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
-import { IsBoolean, IsInt, IsOptional, IsString, Min, MinLength } from 'class-validator';
+import { Allow, IsArray, IsBoolean, IsInt, IsOptional, IsString, Min, MinLength } from 'class-validator';
 import { LayoutsService } from './layouts.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard, RequirePermissions } from '../rbac/permissions.guard';
@@ -17,7 +17,7 @@ class CreateLayoutDto {
 }
 
 class SetPolygonDto {
-  points!: unknown;
+  @Allow() @IsArray() points!: unknown;
   @IsOptional() @IsBoolean() replaceExisting?: boolean;
   @IsOptional() @IsString() layoutId?: string;
 }

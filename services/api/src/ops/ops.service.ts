@@ -1,11 +1,23 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  InstallmentStatus,
+  PlotStatus,
+  Prisma,
+  RegistrationStatus,
+  ResaleListingStatus,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { PlotsService } from '../plots/plots.service';
+import { AuditService } from '../audit/audit.service';
 import type { AuthPrincipal } from '../auth/auth.types';
 
 @Injectable()
 export class OpsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly plots: PlotsService,
+    private readonly audit: AuditService,
+  ) {}
 
   agents(actor: AuthPrincipal) {
     return this.prisma.agentProfile.findMany({
@@ -72,6 +84,52 @@ export class OpsService {
     return rows.map((r) => ({ ...r, amountDuePaise: r.amountDuePaise.toString() }));
   }
 
+  async createSchedule(
+    actor: AuthPrincipal,
+    body: {
+      bookingId: string;
+      items: Array<{ name: string; dueDate: string; amountDuePaise: string; installmentNumber?: number }>;
+    },
+  ) {
+    const booking = await this.prisma.booking.findFirst({
+      where: { id: body.bookingId, organizationId: actor.organizationId },
+    });
+    if (!booking) throw new NotFoundException('Booking not found');
+    if (!Array.isArray(body.items) || body.items.length < 1) {
+      throw new BadRequestException('items required');
+    }
+    const existing = await this.prisma.paymentScheduleItem.count({
+      where: { bookingId: booking.id },
+    });
+    const created = await this.prisma.$transaction(
+      body.items.map((it, idx) =>
+        this.prisma.paymentScheduleItem.create({
+          data: {
+            organizationId: actor.organizationId,
+            bookingId: booking.id,
+            projectId: booking.projectId,
+            customerId: booking.customerId,
+            plotId: booking.plotId,
+            installmentNumber: it.installmentNumber ?? existing + idx + 1,
+            name: it.name,
+            dueDate: new Date(it.dueDate),
+            amountDuePaise: BigInt(it.amountDuePaise),
+            status: InstallmentStatus.UPCOMING,
+          },
+        }),
+      ),
+    );
+    await this.audit.log({
+      organizationId: actor.organizationId,
+      actorId: actor.userId,
+      action: 'payment_schedule.create',
+      entityType: 'Booking',
+      entityId: booking.id,
+      metaJson: { count: created.length },
+    });
+    return created.map((r) => ({ ...r, amountDuePaise: r.amountDuePaise.toString() }));
+  }
+
   registrations(actor: AuthPrincipal) {
     return this.prisma.registration.findMany({
       where: { organizationId: actor.organizationId },
@@ -82,6 +140,93 @@ export class OpsService {
         booking: { select: { id: true, plotId: true } },
       },
     });
+  }
+
+  async createRegistration(actor: AuthPrincipal, body: { bookingId: string; notes?: string }) {
+    const booking = await this.prisma.booking.findFirst({
+      where: { id: body.bookingId, organizationId: actor.organizationId },
+    });
+    if (!booking) throw new NotFoundException('Booking not found');
+    const existing = await this.prisma.registration.findUnique({ where: { bookingId: booking.id } });
+    if (existing) return existing;
+
+    // Move plot into UNDER_DOCUMENTATION if currently BOOKED
+    const plot = await this.prisma.plot.findUnique({ where: { id: booking.plotId } });
+    if (plot?.status === PlotStatus.BOOKED) {
+      await this.plots.transitionStatus(actor, plot.id, {
+        toStatus: PlotStatus.UNDER_DOCUMENTATION,
+        reason: body.notes || 'Registration opened — under documentation',
+        source: 'SALES_FLOW',
+      });
+    }
+
+    const row = await this.prisma.registration.create({
+      data: {
+        organizationId: actor.organizationId,
+        projectId: booking.projectId,
+        bookingId: booking.id,
+        customerId: booking.customerId,
+        status: RegistrationStatus.IN_PROGRESS,
+        notes: body.notes,
+      },
+    });
+    await this.audit.log({
+      organizationId: actor.organizationId,
+      actorId: actor.userId,
+      action: 'registration.create',
+      entityType: 'Registration',
+      entityId: row.id,
+      metaJson: { bookingId: booking.id },
+    });
+    return row;
+  }
+
+  async updateRegistration(
+    actor: AuthPrincipal,
+    id: string,
+    body: { status: string; deedNumber?: string; notes?: string },
+  ) {
+    const row = await this.prisma.registration.findFirst({
+      where: { id, organizationId: actor.organizationId },
+      include: { booking: true },
+    });
+    if (!row) throw new NotFoundException('Registration not found');
+    if (!(Object.values(RegistrationStatus) as string[]).includes(body.status)) {
+      throw new BadRequestException('Invalid registration status');
+    }
+
+    const updated = await this.prisma.registration.update({
+      where: { id },
+      data: {
+        status: body.status as RegistrationStatus,
+        deedNumber: body.deedNumber ?? row.deedNumber,
+        notes: body.notes ?? row.notes,
+        registeredAt:
+          body.status === RegistrationStatus.COMPLETED
+            ? row.registeredAt ?? new Date()
+            : row.registeredAt,
+      },
+    });
+
+    if (body.status === RegistrationStatus.COMPLETED) {
+      // Domain path: UNDER_DOCUMENTATION → SOLD → REGISTERED
+      await this.plots.advanceTo(
+        actor,
+        row.booking.plotId,
+        PlotStatus.REGISTERED,
+        body.notes || body.deedNumber || 'Registration completed',
+      );
+    }
+
+    await this.audit.log({
+      organizationId: actor.organizationId,
+      actorId: actor.userId,
+      action: 'registration.update',
+      entityType: 'Registration',
+      entityId: id,
+      metaJson: { status: body.status },
+    });
+    return updated;
   }
 
   async resales(actor: AuthPrincipal) {
@@ -98,6 +243,55 @@ export class OpsService {
       ...r,
       askingPricePaise: r.askingPricePaise?.toString() ?? null,
     }));
+  }
+
+  async createResale(
+    actor: AuthPrincipal,
+    body: { plotId: string; customerId: string; askingPricePaise?: string; notes?: string; list?: boolean },
+  ) {
+    const plot = await this.prisma.plot.findFirst({
+      where: { id: body.plotId, organizationId: actor.organizationId },
+    });
+    if (!plot) throw new NotFoundException('Plot not found');
+    const customer = await this.prisma.customer.findFirst({
+      where: { id: body.customerId, organizationId: actor.organizationId },
+    });
+    if (!customer) throw new NotFoundException('Customer not found');
+
+    const listNow = body.list !== false;
+    if (listNow && plot.status !== PlotStatus.RESALE_AVAILABLE) {
+      await this.plots.advanceTo(
+        actor,
+        plot.id,
+        PlotStatus.RESALE_AVAILABLE,
+        body.notes || 'Resale listing opened',
+      );
+    }
+
+    const row = await this.prisma.resaleListing.create({
+      data: {
+        organizationId: actor.organizationId,
+        projectId: plot.projectId,
+        plotId: plot.id,
+        customerId: customer.id,
+        status: listNow ? ResaleListingStatus.LISTED : ResaleListingStatus.DRAFT,
+        askingPricePaise: body.askingPricePaise ? BigInt(body.askingPricePaise) : undefined,
+        listedAt: listNow ? new Date() : undefined,
+        notes: body.notes,
+      },
+    });
+    await this.audit.log({
+      organizationId: actor.organizationId,
+      actorId: actor.userId,
+      action: 'resale.create',
+      entityType: 'ResaleListing',
+      entityId: row.id,
+      metaJson: { plotId: plot.id },
+    });
+    return {
+      ...row,
+      askingPricePaise: row.askingPricePaise?.toString() ?? null,
+    };
   }
 
   users(actor: AuthPrincipal) {
@@ -170,17 +364,5 @@ export class OpsService {
         amountPaise: (payments._sum.amountPaise ?? 0n).toString(),
       },
     };
-  }
-
-  async assertCustomerOwnsBooking(actor: AuthPrincipal, bookingId: string) {
-    const b = await this.prisma.booking.findFirst({
-      where: { id: bookingId, organizationId: actor.organizationId },
-      include: { customer: true },
-    });
-    if (!b) throw new NotFoundException('Booking not found');
-    if (actor.roleCode === 'CUSTOMER' && b.customer.userId !== actor.userId) {
-      throw new ForbiddenException('Not your booking');
-    }
-    return b;
   }
 }

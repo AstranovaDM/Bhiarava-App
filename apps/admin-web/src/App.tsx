@@ -1,6 +1,8 @@
 import { Link, NavLink, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import { FormEvent, ReactNode, useCallback, useEffect, useState } from 'react';
 import { api, tokens } from './api';
+import { PlotCanvas, type CanvasTool, type CanvasPlot } from './PlotCanvas';
+import { isMappedPolygon, type NormPoint } from '@bhairava/domain';
 
 type AnyRow = Record<string, any>;
 
@@ -658,31 +660,143 @@ function LayoutsPage() {
   const [projectId, setProjectId] = useState('');
   const [layouts, setLayouts] = useState<AnyRow[]>([]);
   const [plots, setPlots] = useState<AnyRow[]>([]);
+  const [selectedId, setSelectedId] = useState<string | undefined>();
+  const [tool, setTool] = useState<CanvasTool>('select');
+  const [draftPoints, setDraftPoints] = useState<NormPoint[]>([]);
+  const [editablePoints, setEditablePoints] = useState<NormPoint[] | null>(null);
+  const [layoutImageUrl, setLayoutImageUrl] = useState<string | null>(null);
+  const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
+
   useEffect(() => {
     if (!projectId && projects.rows[0]?.id) setProjectId(projects.rows[0].id);
   }, [projects.rows, projectId]);
-  useEffect(() => {
+
+  const reload = useCallback(() => {
     if (!projectId) return;
+    setErr('');
     Promise.all([
-      (api as any).layouts.list(projectId),
+      api.layouts.list(projectId),
       api.plots.listByProject(projectId),
-    ]).then(([l, p]) => { setLayouts(Array.isArray(l) ? l : []); setPlots(p); }).catch((e) => setErr(String(e.message || e)));
+    ])
+      .then(([l, p]) => {
+        setLayouts(Array.isArray(l) ? l : []);
+        setPlots(Array.isArray(p) ? p : []);
+        const first = Array.isArray(l) ? l[0] : null;
+        const meta = first?.metaJson as AnyRow | undefined;
+        setLayoutImageUrl((meta?.publicUrl as string) || (meta?.url as string) || null);
+      })
+      .catch((e) => setErr(String((e as Error).message || e)));
   }, [projectId]);
+
+  useEffect(() => { reload(); }, [reload]);
+
+  const canvasPlots: CanvasPlot[] = plots.map((p) => ({
+    id: p.id,
+    number: String(p.number || p.plotNumber || ''),
+    status: String(p.status || 'AVAILABLE'),
+    areaSqYd: p.areaSqYd,
+    facing: p.facing,
+    polygonJson: p.polygonJson,
+  }));
+
+  const selected = plots.find((p) => p.id === selectedId) || null;
+
+  async function savePolygon(points: NormPoint[], replaceExisting = true) {
+    if (!selectedId) { setErr('Select a plot first'); return; }
+    setBusy(true); setErr(''); setMsg('');
+    try {
+      await api.plots.setPolygon(selectedId, { points, replaceExisting, layoutId: layouts[0]?.id });
+      setMsg('Polygon saved to live API');
+      setDraftPoints([]);
+      setTool('select');
+      setEditablePoints(null);
+      reload();
+    } catch (e: any) {
+      setErr(String(e?.message || e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function clearPolygon() {
+    if (!selectedId) return;
+    setBusy(true); setErr(''); setMsg('');
+    try {
+      await api.plots.clearPolygon(selectedId);
+      setMsg('Polygon cleared');
+      setEditablePoints(null);
+      reload();
+    } catch (e: any) {
+      setErr(String(e?.message || e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div>
-      <div className="topbar"><h1>Layouts & interactive mapping</h1></div>
+      <div className="topbar">
+        <h1>Layouts & interactive mapping</h1>
+        <button className="btn secondary" onClick={reload} disabled={busy}>Reload</button>
+      </div>
       <div className="card row">
         <div>
           <label>Project</label>
-          <select value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+          <select value={projectId} onChange={(e) => { setProjectId(e.target.value); setSelectedId(undefined); }}>
             {projects.rows.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         </div>
+        <div>
+          <label>Tool</label>
+          <div className="tabs" style={{ marginBottom: 0 }}>
+            {(['pan', 'select', 'draw', 'edit'] as CanvasTool[]).map((t) => (
+              <button key={t} type="button" className={tool === t ? 'active' : ''} onClick={() => {
+                setTool(t);
+                if (t === 'edit' && selected && isMappedPolygon(selected.polygonJson)) {
+                  setEditablePoints(selected.polygonJson as NormPoint[]);
+                }
+                if (t !== 'edit') setEditablePoints(null);
+                if (t !== 'draw') setDraftPoints([]);
+              }}>{t}</button>
+            ))}
+          </div>
+        </div>
       </div>
       {err ? <p className="err">{err}</p> : null}
+      {msg ? <p className="ok">{msg}</p> : null}
       <div className="card">
-        <h2>Layouts</h2>
+        <h2>Interactive SVG map (live API)</h2>
+        <p className="muted">Hit-testing uses domain clientToNormMeet with viewBox 0 0 100 100 and preserveAspectRatio=xMidYMid meet. Draw: click vertices, double-click to complete. Edit: drag vertices then Save.</p>
+        <PlotCanvas
+          className="plot-canvas-host"
+          plots={canvasPlots}
+          selectedId={selectedId}
+          onSelect={(p) => {
+            setSelectedId(p.id);
+            setTool('select');
+            setEditablePoints(null);
+            setDraftPoints([]);
+          }}
+          layoutImageUrl={layoutImageUrl}
+          tool={tool}
+          draftPoints={draftPoints}
+          onDraftChange={setDraftPoints}
+          onDraftComplete={(pts) => { void savePolygon(pts, true); }}
+          editablePoints={editablePoints}
+          onEditablePointsChange={setEditablePoints}
+        />
+        <div className="row" style={{ marginTop: '0.75rem' }}>
+          <button className="btn" disabled={busy || !selectedId || draftPoints.length < 3} onClick={() => void savePolygon(draftPoints, true)}>Save draft polygon</button>
+          <button className="btn gold" disabled={busy || !selectedId || !editablePoints || editablePoints.length < 3} onClick={() => editablePoints && void savePolygon(editablePoints, true)}>Save edited vertices</button>
+          <button className="btn danger" disabled={busy || !selectedId || !selected?.polygonJson} onClick={() => void clearPolygon()}>Unlink polygon</button>
+          <button className="btn ghost" disabled={!draftPoints.length} onClick={() => setDraftPoints([])}>Clear draft</button>
+        </div>
+        <p className="muted">Selected: {selected ? (selected.number + ' (' + selected.status + ') — ' + (selected.polygonJson ? 'mapped' : 'unmapped')) : 'none'}</p>
+      </div>
+      <div className="card">
+        <h2>Layouts (API)</h2>
         <table>
           <thead><tr><th>Id</th><th>Name</th><th>Size</th></tr></thead>
           <tbody>
@@ -691,18 +805,19 @@ function LayoutsPage() {
             ))}
           </tbody>
         </table>
-        {!layouts.length ? <p className="muted">No layouts yet — upload via project workspace (MAIN canvas SoT for hit-testing).</p> : null}
+        {!layouts.length ? <p className="muted">No layout rows yet — canvas still works against plot polygons.</p> : null}
       </div>
       <div className="card">
-        <h2>Plot polygons (API)</h2>
+        <h2>Plot polygons</h2>
         <table>
-          <thead><tr><th>#</th><th>Status</th><th>Polygon</th></tr></thead>
+          <thead><tr><th>#</th><th>Status</th><th>Polygon</th><th></th></tr></thead>
           <tbody>
             {plots.map((p) => (
-              <tr key={p.id}>
+              <tr key={p.id} style={p.id === selectedId ? { background: '#eff6ff' } : undefined}>
                 <td>{p.number || p.plotNumber}</td>
                 <td><span className="chip">{p.status}</span></td>
                 <td>{p.polygonJson ? 'mapped' : '—'}</td>
+                <td><button className="btn ghost" type="button" onClick={() => setSelectedId(p.id)}>Select</button></td>
               </tr>
             ))}
           </tbody>

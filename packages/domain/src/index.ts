@@ -13,3 +13,31 @@ export * from './pii';
 export * from './plot-geometry';
 export * from './plot-status-colors';
 export * from './layout-api';
+
+/** Explicit named re-exports so Vite/Rollup can resolve CJS interop. */
+export {
+  isMappedPolygon,
+  validatePolygon,
+  linkPolygonToPlot,
+  unlinkPolygonFromPlot,
+  relinkPolygon,
+  buildMasterPlanMeta,
+  LAYOUT_VIEWBOX,
+  clientToNormMeet,
+  type NormPoint,
+  type MasterPlanUploadMeta,
+} from './plot-geometry';
+export {
+  fillForPlotStatus,
+  labelForPlotStatus,
+  solidForPlotStatus,
+  inkForPlotStatus,
+  canonicalPlotStatusFill,
+  canonicalPlotStatusSolid,
+  canonicalPlotStatusLabel,
+} from './plot-status-colors';
+export {
+  PLOT_STATUSES,
+  toCanonicalPlotStatus,
+  type CanonicalPlotStatus,
+} from './plot-status';

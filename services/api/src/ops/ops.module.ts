@@ -1,12 +1,14 @@
 import { Module } from '@nestjs/common';
-import { OpsService } from './ops.service';
 import { OpsController } from './ops.controller';
+import { OpsService } from './ops.service';
 import { RbacModule } from '../rbac/rbac.module';
+import { PlotsModule } from '../plots/plots.module';
+import { AuditModule } from '../audit/audit.module';
 
 @Module({
-  imports: [RbacModule],
-  providers: [OpsService],
+  imports: [RbacModule, PlotsModule, AuditModule],
   controllers: [OpsController],
+  providers: [OpsService],
   exports: [OpsService],
 })
 export class OpsModule {}
