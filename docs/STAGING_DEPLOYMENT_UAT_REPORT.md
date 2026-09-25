@@ -1,11 +1,12 @@
 ﻿# BHAIRAVA Staging Deployment + UAT Report
 
 **Date (IST):** 2026-09-25 15:43:49 Asia/Calcutta (original local UAT)
-**Follow-up (local staging re-verify):** 2026-09-25 16:40 Asia/Calcutta (IST) â€” BigInt + agent attribution confirmed on isolated stack @ `aa8f6fb`; harness + report push follows
-**Branch tip:** `aa8f6fb400f319fe7eae1d511154086edaf8f067` (`aa8f6fb`) on `feat/production-platform` — BigInt + attribution verified; this report/harness commit
-**PR:** https://github.com/BadhulaVijaybhaskar/bhairava-App/pull/10 â€” **OPEN / NOT MERGED**  
+**Follow-up (local staging re-verify):** 2026-09-25 16:40 Asia/Calcutta (IST) — BigInt + agent attribution confirmed on isolated stack @ `aa8f6fb`; harness + report push follows
+**Security suite (cloud agent):** 2026-09-25 — PR #10 review findings 1–8 remediated; domain 14 + api-client 3 + api 85 tests green
+**Branch tip:** (see latest commit on `feat/production-platform` after security suite push)
+**PR:** https://github.com/BadhulaVijaybhaskar/bhairava-App/pull/10 — **OPEN / NOT MERGED**  
 **RC tag:** `bhairava-production-rc1` @ `e29ec71`  
-**Machine:** Windows (Vijay) â€” local isolated staging; cloud agent verified unit/API tests only  
+**Machine:** Windows (Vijay) — local isolated staging; cloud agent verified unit/API/security suite + clean workspace API build  
 
 ## Executive verdict
 
@@ -211,20 +212,58 @@ Credentials path (local only): `artifacts/staging/credentials.md` and `.env.stag
 
 ### O.5 Staging root-cause confirmation (live)
 
-Prior API log on old build: `GET /api/documents` â†’ `TypeError: Do not know how to serialize a BigInt` â†’ HTTP 500.
+Prior API log on old build: `GET /api/documents` → `TypeError: Do not know how to serialize a BigInt` → HTTP 500.
 After rebuild with `BigIntJsonInterceptor` + service `toString()`: same endpoint **200** with `"sizeBytes":"<decimal-string>"`.
+
+## Q. PR #10 review remediation — security suite (cloud agent, 2026-09-25)
+
+**Scope:** Fix all 8 open Codex review findings on `feat/production-platform` (PR #10). BigInt serialization + agent booking attribution preserved (no regression).
+
+### Q.1 Finding status
+
+| # | Finding | Status | Evidence |
+|---|---------|--------|----------|
+| 1 | Docker API builds workspace `dist/` packages | **FIXED** | `Dockerfile.api` builds `@bhairava/domain` + `@bhairava/permissions` before API; clean wipe of `dist/` then ordered rebuild → `services/api/dist/main.js` OK. Docker daemon **unavailable** in this VM (`docker: command not found`); coordinator to re-prove `docker build` + `/health` `/ready` on Windows staging. |
+| 2 | Serialize concurrent token refresh | **FIXED** | `@bhairava/api-client` single in-flight refresh promise; **3/3** concurrent-refresh tests pass (one refresh for 5×401; failure clears once; cookie restore). |
+| 3 | Reservation list ownership | **FIXED** | Customer self / Agent own+assigned / staff org-wide; cancel-request ownership; privacy suite. |
+| 4 | Document list + signed URL ownership | **FIXED** | AGENT_VISIBLE org packs; CUSTOMER_PROFILE_RELATED scoped to assigned customers for **list and download**; Agent2 ID guess denied. |
+| 5 | Agent payment ownership | **FIXED** | `finance.view` for AGENT scoped; `GET /payments/:id`; schedules/receipts/registrations/resales/commissions audited. |
+| 6 | Reservation→booking customer match | **FIXED** | Same-tx `reservation.customerId === booking.customerId`; mismatch rejects; reservation unchanged. |
+| 7 | Web session restoration | **FIXED** | Agent + customer web: `AUTH_INITIALIZING` → cookie refresh restore → then protected route; refresh **not** in localStorage. |
+| 8 | Atomic receipt numbers | **FIXED** | `organizations.receiptCounter` + `UPDATE … RETURNING`; RCP-* format; P2002 → 409 Conflict (no Prisma 500 leak). Migration `20260925120000_receipt_counter`. |
+
+### Q.2 Automated test / build totals (this VM)
+
+| Suite | Result |
+|-------|--------|
+| `@bhairava/domain` | **14/14** pass |
+| `@bhairava/api-client` concurrent refresh | **3/3** pass |
+| `@bhairava/api` (incl. ownership-audit + prior privacy) | **85/85** pass (14 suites) |
+| Clean workspace package order → API build | **PASS** (`domain` → `permissions` → `prisma generate` → `api`) |
+| `@bhairava/agent-web` / `@bhairava/customer-web` production build | **PASS** |
+| Docker image build + container `/health` `/ready` | **DEFERRED** — Docker not installed on cloud VM; Windows staging coordinator re-run |
+
+### Q.3 Expanded privacy / ownership audit coverage
+
+New `services/api/src/privacy/ownership-audit.spec.ts` covers negative cases for: reservations, documents (list+download), payments, schedules, registrations, commissions, notifications, reservation→booking integrity, receipt concurrency, web session boot contract. Shared helper `services/api/src/common/ownership/record-scope.ts` is the server-side SoT used by payments/documents/ops/finance.
+
+### Q.4 Remaining external blockers (unchanged)
+
+- Public DNS / TLS for internet-facing staging
+- External notification provider credentials (email/SMS/WhatsApp/push still stubs)
+- EAS / mobile store publish credentials
+- **Do not merge PR #10. Do not deploy production. Do not publish stores.**
 
 ## Promotion decision
 
 - **Local isolated staging UAT (tip with BigInt + attribution):** technically successful (**CONDITIONAL YES**, local-only).
 - **Internet-facing staging / production promotion:** **NO** until DNS/TLS, external notification credentials, and explicit merge/production authorization.
 - **PR #10 remains OPEN and unmerged.** Do not merge. Do not deploy production. Do not publish stores.
+- **Security review remediation (Q):** code + automated suite green on cloud VM; live Windows staging re-verify (incl. Docker health/ready) remains with coordinator after push.
 
 ## P. Artifacts (gitignored)
 
-- `artifacts/staging/uat-results.json` â€” 54/54
-- `artifacts/staging/concurrency-results.json` â€” 201+409
-- `artifacts/staging/credentials.md`, `.env.staging.local` â€” local secrets only
-
-
+- `artifacts/staging/uat-results.json` — 54/54
+- `artifacts/staging/concurrency-results.json` — 201+409
+- `artifacts/staging/credentials.md`, `.env.staging.local` — local secrets only
 
