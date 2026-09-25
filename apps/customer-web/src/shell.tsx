@@ -15,7 +15,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import type { PublicUser } from '@bhairava/api-client';
 import { AppShell, LoadingState, type NavGroup, type NavItem } from '@bhairava/ui-web';
 import { api, tokens } from './api';
-import { appPath } from './basePath';
+import { appPath, LOGO_SRC } from './basePath';
 
 type AuthBootState = 'AUTH_INITIALIZING' | 'AUTHENTICATED' | 'UNAUTHENTICATED';
 
@@ -123,6 +123,7 @@ function AuthenticatedShell() {
         hideFab
         brandTitle="Bhairava"
         brandSubtitle="Customer portal"
+        logoSrc={LOGO_SRC}
         user={user ? { name: user.displayName, email: user.email ?? undefined } : null}
         onSignOut={() => void signOut()}
         notificationsTo="/notifications"
