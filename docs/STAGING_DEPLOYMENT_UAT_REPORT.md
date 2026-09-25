@@ -1,8 +1,8 @@
 ﻿# BHAIRAVA Staging Deployment + UAT Report
 
 **Date (IST):** 2026-09-25 15:43:49 Asia/Calcutta (original local UAT)
-**Follow-up (local staging re-verify):** 2026-09-25 16:40 Asia/Calcutta (IST) â€” BigInt + agent attribution confirmed on isolated stack @ `2edeb21`; harness + report push follows
-**Branch tip:** `2edeb21` (`feat/production-platform`) â€” BigInt JSON + agent booking attribution; report/harness commit updates tip after push
+**Follow-up (local staging re-verify):** 2026-09-25 16:40 Asia/Calcutta (IST) â€” BigInt + agent attribution confirmed on isolated stack @ `aa8f6fb`; harness + report push follows
+**Branch tip:** `aa8f6fb400f319fe7eae1d511154086edaf8f067` (`aa8f6fb`) on `feat/production-platform` — BigInt + attribution verified; this report/harness commit
 **PR:** https://github.com/BadhulaVijaybhaskar/bhairava-App/pull/10 â€” **OPEN / NOT MERGED**  
 **RC tag:** `bhairava-production-rc1` @ `e29ec71`  
 **Machine:** Windows (Vijay) â€” local isolated staging; cloud agent verified unit/API tests only  
@@ -11,7 +11,7 @@
 
 | Gate | Result |
 |------|--------|
-| Staging stack green for UAT (local isolated) | **YES** (restarted API on tip `2edeb21`; health/ready green) |
+| Staging stack green for UAT (local isolated) | **YES** (restarted API on tip `aa8f6fb`; health/ready green) |
 | Full checklist executed | **YES** â€” staging UAT **54/54** pass (was 47/47; +documents list roles + agent attribution steps) |
 | Documents list BigInt 500 (code fix) | **CONFIRMED FIXED ON STAGING** â€” `GET /api/documents` = 200; `sizeBytes` decimal strings |
 | Agent booking attribution (code fix) | **CONFIRMED ON STAGING** â€” Agent1 sees own (nâ‰¥1, PII); Agent2 n=0 / cross-GET 404 |
@@ -136,7 +136,7 @@ Agent/customer booking list visibility: **re-verified** â€” Agent create se
 - Restore into `bhairava_staging_restore` â†’ **8 users** verified
 - Object storage recovery: re-point `S3_*` to staging MinIO + restore bucket objects from MinIO versioning/backup (bucket isolated; document recovery procedure remains ops runbook)
 
-## M. Final gates (local re-verify on tip `2edeb21` + harness push)
+## M. Final gates (local re-verify on tip `aa8f6fb` + harness push)
 
 | Gate | Result |
 |------|--------|
@@ -166,6 +166,8 @@ Credentials path (local only): `artifacts/staging/credentials.md` and `.env.stag
 3. **Mobile store signing / EAS** â€” BLOCKED BY EXTERNAL CREDENTIAL
 
 ~~Documents list BigInt 500~~ and ~~Agent booking attribution~~ are **fixed and confirmed on local isolated staging** (see O / M).
+
+**Code fix tip:** `2edeb217` / `bad50c6` (BigInt JSON + agent attribution).
 
 ## O. Post-UAT defect fixes (cloud agent â€” unit/API tests only)
 
@@ -198,7 +200,7 @@ Credentials path (local only): `artifacts/staging/credentials.md` and `.env.stag
 
 | Check | Result |
 |-------|--------|
-| Pull tip `2edeb21`, rebuild API, restart staging API/worker | **PASS** â€” health/ready green |
+| Pull tip `aa8f6fb`, rebuild API, restart staging API/worker | **PASS** â€” health/ready green |
 | `GET /api/documents` Founder/Admin/Finance/Agent | **200**, `sizeBytes` typeof string, no BigInt 500 |
 | Customer documents list | **200** empty (visibility filter) |
 | Agent1 bookings list | **200**, sees own booking(s), customer PII when related |
@@ -223,4 +225,6 @@ After rebuild with `BigIntJsonInterceptor` + service `toString()`: same endpoint
 - `artifacts/staging/uat-results.json` â€” 54/54
 - `artifacts/staging/concurrency-results.json` â€” 201+409
 - `artifacts/staging/credentials.md`, `.env.staging.local` â€” local secrets only
+
+
 
