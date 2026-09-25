@@ -63,4 +63,10 @@ export class DocumentsController {
   archive(@CurrentUser() user: AuthPrincipal, @Param('id') id: string) {
     return this.documents.archive(user, id);
   }
+
+  @Patch(':id/verify')
+  @RequirePermissions('documents.internal')
+  verify(@CurrentUser() user: AuthPrincipal, @Param('id') id: string) {
+    return this.documents.verify(user, id);
+  }
 }

@@ -7,6 +7,7 @@ import {
 import { PlotStatus, ReservationState, Prisma, StatusChangeSource } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import type { AuthPrincipal } from '../auth/auth.types';
 import { DEFAULT_RESERVATION_HOURS, isTransitionAllowed } from '@bhairava/domain';
 
@@ -24,6 +25,7 @@ export class ReservationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   /**
@@ -119,6 +121,27 @@ export class ReservationsService {
       entityId: result.id,
       metaJson: { plotId: input.plotId, customerId: input.customerId },
     });
+    
+    const cust = await this.prisma.customer.findUnique({ where: { id: input.customerId }, select: { userId: true } });
+    if (cust?.userId) {
+      await this.notifications.notify({
+        organizationId: actor.organizationId,
+        userId: cust.userId,
+        title: 'Reservation created',
+        body: 'A plot was reserved for you. It expires at ' + result.expiresAt.toISOString() + '.',
+        payloadJson: { kind: 'reservation_created', reservationId: result.id, plotId: input.plotId, href: '/reservations' },
+        actorId: actor.userId,
+      });
+    }
+    await this.notifications.notify({
+      organizationId: actor.organizationId,
+      userId: actor.userId,
+      title: 'Reservation created',
+      body: 'Reservation ' + result.id + ' held until ' + result.expiresAt.toISOString() + '.',
+      payloadJson: { kind: 'reservation_created', reservationId: result.id, plotId: input.plotId, href: '/reservations' },
+      actorId: actor.userId,
+    });
+
     return result;
   }
 
@@ -185,6 +208,44 @@ export class ReservationsService {
       }
     }
     return { releasedCount: released.length, released };
+  }
+
+  async requestCancel(actor: AuthPrincipal, id: string, reason?: string) {
+    const row = await this.prisma.reservation.findFirst({
+      where: { id, organizationId: actor.organizationId },
+      include: { customer: { select: { userId: true, name: true } } },
+    });
+    if (!row) throw new NotFoundException('Reservation not found');
+    if (row.state !== ReservationState.ACTIVE) throw new BadRequestException('Reservation is not active');
+    const updated = await this.prisma.reservation.update({
+      where: { id },
+      data: {
+        cancelRequestStatus: 'PENDING' as any,
+        cancelReason: reason || 'Customer/agent requested cancellation',
+      },
+    });
+    await this.audit.log({
+      organizationId: actor.organizationId,
+      actorId: actor.userId,
+      action: 'reservation.cancel_request',
+      entityType: 'Reservation',
+      entityId: id,
+      metaJson: { reason: reason || null },
+    });
+    const targets = new Set<string>()
+    if (row.customer?.userId) targets.add(row.customer.userId);
+    targets.add(actor.userId);
+    for (const uid of targets) {
+      await this.notifications.notify({
+        organizationId: actor.organizationId,
+        userId: uid,
+        title: 'Cancellation requested',
+        body: 'Cancellation requested for reservation ' + id + '.',
+        payloadJson: { kind: 'cancellation_request', reservationId: id, href: '/reservations' },
+        actorId: actor.userId,
+      });
+    }
+    return updated;
   }
 }
 

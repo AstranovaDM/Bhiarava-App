@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import { ReservationsService } from './reservations.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -34,5 +34,15 @@ export class ReservationsController {
   @RequirePermissions('sales.reservations.manage')
   create(@CurrentUser() user: AuthPrincipal, @Body() dto: CreateReservationDto) {
     return this.reservations.reserve(user, { ...dto, holdHours: (dto as any).holdHours ?? (dto as any).holdHours });
+  }
+
+  @Post(':id/cancel-request')
+  @RequirePermissions('sales.reservations.manage')
+  cancelRequest(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id') id: string,
+    @Body() body: { reason?: string },
+  ) {
+    return this.reservations.requestCancel(user, id, body?.reason);
   }
 }

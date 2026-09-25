@@ -125,6 +125,21 @@ export function createApiClient(opts: ApiClientOptions) {
         request<Record<string, unknown>>('POST', '/api/projects/' + id + '/amenities', body),
       removeAmenity: (id: string, amenityId: string) =>
         request<{ ok: boolean }>('DELETE', '/api/projects/' + id + '/amenities/' + amenityId),
+      addPhase: (id: string, body: Record<string, unknown>) =>
+        request<Record<string, unknown>>('POST', '/api/projects/' + id + '/phases', body),
+      updatePhase: (id: string, phaseId: string, body: Record<string, unknown>) =>
+        request<Record<string, unknown>>('PATCH', '/api/projects/' + id + '/phases/' + phaseId, body),
+      removePhase: (id: string, phaseId: string) =>
+        request<{ ok: boolean }>('DELETE', '/api/projects/' + id + '/phases/' + phaseId),
+      addBlock: (id: string, body: Record<string, unknown>) =>
+        request<Record<string, unknown>>('POST', '/api/projects/' + id + '/blocks', body),
+      updateBlock: (id: string, blockId: string, body: Record<string, unknown>) =>
+        request<Record<string, unknown>>('PATCH', '/api/projects/' + id + '/blocks/' + blockId, body),
+      removeBlock: (id: string, blockId: string) =>
+        request<{ ok: boolean }>('DELETE', '/api/projects/' + id + '/blocks/' + blockId),
+      mediaList: (id: string) => request<Record<string, unknown>>('GET', '/api/projects/' + id + '/media'),
+      mediaUpload: (id: string, body: Record<string, unknown>) =>
+        request<Record<string, unknown>>('POST', '/api/projects/' + id + '/media', body),
     },
     plots: {
       listByProject: (projectId: string) => request<PlotSummary[]>('GET', '/api/plots/project/' + projectId),
@@ -171,6 +186,8 @@ export function createApiClient(opts: ApiClientOptions) {
       create: (body: {
         plotId: string; customerId: string; agentId?: string; leadId?: string; holdHours?: number; notes?: string;
       }) => request<ReservationSummary>('POST', '/api/reservations', body),
+      cancelRequest: (id: string, reason?: string) =>
+        request<Record<string, unknown>>('POST', '/api/reservations/' + id + '/cancel-request', { reason }),
     },
     bookings: {
       list: (q?: { projectId?: string; customerId?: string }) => {
@@ -213,6 +230,8 @@ export function createApiClient(opts: ApiClientOptions) {
           'GET',
           '/api/documents/' + id + '/download',
         ),
+      verify: (id: string) =>
+        request<Record<string, unknown>>('PATCH', '/api/documents/' + id + '/verify'),
     },
     audit: {
       list: (q?: { take?: number; action?: string; entityType?: string }) => {

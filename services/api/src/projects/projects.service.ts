@@ -1,11 +1,15 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { AmenityStatus, Prisma, ProjectLifecycle } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { StorageService } from '../storage/storage.service';
 import type { AuthPrincipal } from '../auth/auth.types';
 
 @Injectable()
 export class ProjectsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storage: StorageService,
+  ) {}
 
   list(actor: AuthPrincipal, q: { lifecycleStatus?: string } = {}) {
     const where: Prisma.ProjectWhereInput = { organizationId: actor.organizationId };
@@ -204,4 +208,138 @@ export class ProjectsService {
     await this.prisma.amenity.delete({ where: { id: amenityId } });
     return { ok: true };
   }
+
+
+  async addPhase(actor: AuthPrincipal, projectId: string, body: { name: string; status?: string; sortOrder?: number; startDate?: string; endDate?: string }) {
+    await this.get(actor, projectId);
+    const count = await this.prisma.phase.count({ where: { projectId } });
+    return this.prisma.phase.create({
+      data: {
+        organizationId: actor.organizationId,
+        projectId,
+        name: body.name,
+        status: body.status || 'Planned',
+        sortOrder: body.sortOrder ?? count,
+        startDate: body.startDate ? new Date(body.startDate) : null,
+        endDate: body.endDate ? new Date(body.endDate) : null,
+      },
+    });
+  }
+
+  async updatePhase(actor: AuthPrincipal, projectId: string, phaseId: string, body: { name?: string; status?: string; sortOrder?: number; startDate?: string; endDate?: string }) {
+    await this.get(actor, projectId);
+    const row = await this.prisma.phase.findFirst({ where: { id: phaseId, projectId, organizationId: actor.organizationId } });
+    if (!row) throw new NotFoundException('Phase not found');
+    return this.prisma.phase.update({
+      where: { id: phaseId },
+      data: {
+        name: body.name ?? row.name,
+        status: body.status ?? row.status,
+        sortOrder: body.sortOrder ?? row.sortOrder,
+        startDate: body.startDate !== undefined ? (body.startDate ? new Date(body.startDate) : null) : row.startDate,
+        endDate: body.endDate !== undefined ? (body.endDate ? new Date(body.endDate) : null) : row.endDate,
+      },
+    });
+  }
+
+  async removePhase(actor: AuthPrincipal, projectId: string, phaseId: string) {
+    await this.get(actor, projectId);
+    const row = await this.prisma.phase.findFirst({ where: { id: phaseId, projectId, organizationId: actor.organizationId } });
+    if (!row) throw new NotFoundException('Phase not found');
+    await this.prisma.phase.delete({ where: { id: phaseId } });
+    return { ok: true };
+  }
+
+  async addBlock(actor: AuthPrincipal, projectId: string, body: { name: string; phaseId?: string; sortOrder?: number }) {
+    await this.get(actor, projectId);
+    const count = await this.prisma.block.count({ where: { projectId } });
+    return this.prisma.block.create({
+      data: {
+        organizationId: actor.organizationId,
+        projectId,
+        phaseId: body.phaseId || null,
+        name: body.name,
+        sortOrder: body.sortOrder ?? count,
+      },
+    });
+  }
+
+  async updateBlock(actor: AuthPrincipal, projectId: string, blockId: string, body: { name?: string; phaseId?: string; sortOrder?: number }) {
+    await this.get(actor, projectId);
+    const row = await this.prisma.block.findFirst({ where: { id: blockId, projectId, organizationId: actor.organizationId } });
+    if (!row) throw new NotFoundException('Block not found');
+    return this.prisma.block.update({
+      where: { id: blockId },
+      data: {
+        name: body.name ?? row.name,
+        phaseId: body.phaseId !== undefined ? (body.phaseId || null) : row.phaseId,
+        sortOrder: body.sortOrder ?? row.sortOrder,
+      },
+    });
+  }
+
+  async removeBlock(actor: AuthPrincipal, projectId: string, blockId: string) {
+    await this.get(actor, projectId);
+    const row = await this.prisma.block.findFirst({ where: { id: blockId, projectId, organizationId: actor.organizationId } });
+    if (!row) throw new NotFoundException('Block not found');
+    await this.prisma.block.delete({ where: { id: blockId } });
+    return { ok: true };
+  }
+
+  async mediaList(actor: AuthPrincipal, projectId: string) {
+    const project = await this.get(actor, projectId);
+    const layouts = await this.prisma.layout.findMany({
+      where: { projectId, organizationId: actor.organizationId },
+      orderBy: { createdAt: 'desc' },
+    });
+    const settings = (project.settingsJson as Record<string, unknown>) || {};
+    const gallery = Array.isArray(settings.gallery) ? settings.gallery : [];
+    return {
+      coverImageKey: project.coverImageKey,
+      brochureKey: project.brochureKey,
+      gallery,
+      layouts: layouts.map((l) => ({
+        id: l.id, name: l.name, imageKey: l.imageKey, widthPx: l.widthPx, heightPx: l.heightPx,
+        metaJson: l.metaJson, createdAt: l.createdAt,
+      })),
+    };
+  }
+
+  async mediaUpload(
+    actor: AuthPrincipal,
+    projectId: string,
+    body: { kind: string; originalName: string; mimeType?: string; sizeBytes?: number; label?: string },
+  ) {
+    await this.get(actor, projectId);
+    const kind = body.kind || 'gallery';
+    this.storage.validateUploadMeta(body.mimeType, body.sizeBytes);
+    const key = this.storage.buildKey(actor.organizationId, `projects/${projectId}/${kind}`, body.originalName);
+    const upload = await this.storage.getUploadUrl(key, body.mimeType || 'application/octet-stream', body.sizeBytes);
+
+    if (kind === 'cover') {
+      await this.prisma.project.update({ where: { id: projectId }, data: { coverImageKey: key } });
+    } else if (kind === 'brochure') {
+      await this.prisma.project.update({ where: { id: projectId }, data: { brochureKey: key } });
+    } else {
+      const project = await this.prisma.project.findUnique({ where: { id: projectId } });
+      const settings = ((project?.settingsJson as Record<string, unknown>) || {});
+      const gallery = Array.isArray(settings.gallery) ? [...(settings.gallery as object[])] : [];
+      gallery.push({
+        key,
+        label: body.label || body.originalName,
+        mimeType: body.mimeType || null,
+        sizeBytes: body.sizeBytes ?? null,
+        visibility: 'AGENT_VISIBLE',
+        createdAt: new Date().toISOString(),
+      });
+      settings.gallery = gallery;
+      await this.prisma.project.update({
+        where: { id: projectId },
+        data: { settingsJson: settings as Prisma.InputJsonValue },
+      });
+    }
+
+    return { key, kind, upload };
+  }
+
 }

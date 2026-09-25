@@ -9,6 +9,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { PlotsService } from '../plots/plots.service';
 import { AuditService } from '../audit/audit.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import type { AuthPrincipal } from '../auth/auth.types';
 
 @Injectable()
@@ -17,6 +18,7 @@ export class OpsService {
     private readonly prisma: PrismaService,
     private readonly plots: PlotsService,
     private readonly audit: AuditService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   agents(actor: AuthPrincipal) {
@@ -191,6 +193,19 @@ export class OpsService {
       entityId: booking.id,
       metaJson: { count: created.length },
     });
+    
+    const cust = await this.prisma.customer.findUnique({ where: { id: booking.customerId }, select: { userId: true } });
+    if (cust?.userId) {
+      await this.notifications.notify({
+        organizationId: actor.organizationId,
+        userId: cust.userId,
+        title: 'Payment due',
+        body: 'A payment schedule with ' + created.length + ' installment(s) was created for your booking.',
+        payloadJson: { kind: 'payment_due', bookingId: booking.id, href: '/collections' },
+        actorId: actor.userId,
+      });
+    }
+
     return created.map((r) => ({ ...r, amountDuePaise: r.amountDuePaise.toString() }));
   }
 
@@ -242,6 +257,19 @@ export class OpsService {
       entityId: row.id,
       metaJson: { bookingId: booking.id },
     });
+    
+    const cust = await this.prisma.customer.findUnique({ where: { id: booking.customerId }, select: { userId: true } });
+    if (cust?.userId) {
+      await this.notifications.notify({
+        organizationId: actor.organizationId,
+        userId: cust.userId,
+        title: 'Registration scheduled',
+        body: 'Registration was opened for your booking.',
+        payloadJson: { kind: 'registration_scheduled', registrationId: row.id, bookingId: booking.id, href: '/registrations' },
+        actorId: actor.userId,
+      });
+    }
+
     return row;
   }
 
@@ -273,6 +301,19 @@ export class OpsService {
     });
 
     if (body.status === RegistrationStatus.COMPLETED) {
+
+      const cust = await this.prisma.customer.findUnique({ where: { id: row.customerId }, select: { userId: true } });
+      if (cust?.userId) {
+        await this.notifications.notify({
+          organizationId: actor.organizationId,
+          userId: cust.userId,
+          title: 'Registration completed',
+          body: 'Your registration is completed.',
+          payloadJson: { kind: 'registration_completed', registrationId: id, href: '/registrations' },
+          actorId: actor.userId,
+        });
+      }
+
       // Domain path: UNDER_DOCUMENTATION → SOLD → REGISTERED
       await this.plots.advanceTo(
         actor,
@@ -352,7 +393,27 @@ export class OpsService {
       entityId: row.id,
       metaJson: { plotId: plot.id },
     });
-    return {
+    
+    await this.notifications.notify({
+      organizationId: actor.organizationId,
+      userId: actor.userId,
+      title: 'Resale listing created',
+      body: 'A resale listing was created.',
+      payloadJson: { kind: 'resale_created', href: '/resale' },
+      actorId: actor.userId,
+    });
+    const custR = await this.prisma.customer.findUnique({ where: { id: body.customerId }, select: { userId: true } });
+    if (custR?.userId) {
+      await this.notifications.notify({
+        organizationId: actor.organizationId,
+        userId: custR.userId,
+        title: 'Resale listing created',
+        body: 'Your property was listed for resale.',
+        payloadJson: { kind: 'resale_created', href: '/resale' },
+        actorId: actor.userId,
+      });
+    }
+return {
       ...row,
       askingPricePaise: row.askingPricePaise?.toString() ?? null,
     };

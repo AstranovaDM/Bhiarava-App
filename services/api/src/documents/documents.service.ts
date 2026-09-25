@@ -2,6 +2,7 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import { DocumentVisibility, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import type { AuthPrincipal } from '../auth/auth.types';
 
 @Injectable()
@@ -9,6 +10,7 @@ export class DocumentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   private visibilityFor(actor: AuthPrincipal): DocumentVisibility[] {
@@ -61,7 +63,7 @@ export class DocumentsService {
         customerId: body.customerId,
         visibility: body.visibility as DocumentVisibility,
         title: body.title,
-        docType: body.docType,
+        docType: body.docType || 'PENDING',
         storageKey: key,
         mimeType: body.mimeType,
         sizeBytes: body.sizeBytes != null ? BigInt(body.sizeBytes) : undefined,
@@ -69,6 +71,29 @@ export class DocumentsService {
       },
     });
     const upload = await this.storage.getUploadUrl(key, body.mimeType || 'application/octet-stream', body.sizeBytes);
+
+    if (body.customerId) {
+      const cust = await this.prisma.customer.findUnique({ where: { id: body.customerId }, select: { userId: true } });
+      if (cust?.userId) {
+        await this.notifications.notify({
+          organizationId: actor.organizationId,
+          userId: cust.userId,
+          title: 'Document pending',
+          body: 'Document "' + body.title + '" is pending verification.',
+          payloadJson: { kind: 'document_pending', documentId: doc.id, href: '/documents' },
+          actorId: actor.userId,
+        });
+      }
+    }
+    await this.notifications.notify({
+      organizationId: actor.organizationId,
+      userId: actor.userId,
+      title: 'Document pending',
+      body: 'Uploaded "' + body.title + '" — pending verification.',
+      payloadJson: { kind: 'document_pending', documentId: doc.id, href: '/documents' },
+      actorId: actor.userId,
+    });
+
     // Never return permanent raw bucket path — only signed upload URL + opaque key.
     return {
       document: {
@@ -141,5 +166,32 @@ export class DocumentsService {
       data: { archivedAt: new Date() },
     });
     return { id: updated.id, archivedAt: updated.archivedAt };
+  }
+
+  async verify(actor: AuthPrincipal, id: string) {
+    const doc = await this.prisma.document.findFirst({
+      where: { id, organizationId: actor.organizationId, archivedAt: null },
+    });
+    if (!doc) throw new NotFoundException('Document not found');
+    const updated = await this.prisma.document.update({
+      where: { id },
+      data: { docType: 'VERIFIED' },
+    });
+    const targets = new Set<string>([actor.userId]);
+    if (doc.customerId) {
+      const cust = await this.prisma.customer.findUnique({ where: { id: doc.customerId }, select: { userId: true } });
+      if (cust?.userId) targets.add(cust.userId);
+    }
+    for (const uid of targets) {
+      await this.notifications.notify({
+        organizationId: actor.organizationId,
+        userId: uid,
+        title: 'Document verified',
+        body: 'Document "' + doc.title + '" was verified.',
+        payloadJson: { kind: 'document_verified', documentId: id, href: '/documents' },
+        actorId: actor.userId,
+      });
+    }
+    return updated;
   }
 }
