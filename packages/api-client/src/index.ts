@@ -45,7 +45,60 @@ export function createApiClient(opts: ApiClientOptions) {
   const onUnauthorized = opts.onUnauthorized ?? (opts as any).onUnauthorized;
   const base = opts.baseUrl.replace(/\/$/, '');
 
-  async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  /** Single in-flight refresh shared by concurrent 401s (prevents reuse detection). */
+  let refreshInFlight: Promise<string | null> | null = null;
+  let unauthorizedNotified = false;
+
+  function notifyUnauthorizedOnce() {
+    if (unauthorizedNotified) return;
+    unauthorizedNotified = true;
+    onUnauthorized?.();
+  }
+
+  function resetUnauthorizedGate() {
+    unauthorizedNotified = false;
+  }
+
+  async function performRefresh(): Promise<string | null> {
+    if (!opts.tokens) return null;
+    if (refreshInFlight) return refreshInFlight;
+
+    refreshInFlight = (async () => {
+      try {
+        const refresh = await opts.tokens!.getRefreshToken();
+        const refreshed = await fetch(base + '/api/auth/refresh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(refresh ? { refreshToken: refresh } : {}),
+        });
+        if (!refreshed.ok) {
+          await opts.tokens!.clear();
+          notifyUnauthorizedOnce();
+          return null;
+        }
+        const data = (await refreshed.json()) as AuthSession;
+        await opts.tokens!.setTokens(data.accessToken, data.refreshToken ?? null);
+        resetUnauthorizedGate();
+        return data.accessToken;
+      } catch {
+        await opts.tokens!.clear();
+        notifyUnauthorizedOnce();
+        return null;
+      } finally {
+        refreshInFlight = null;
+      }
+    })();
+
+    return refreshInFlight;
+  }
+
+  async function request<T>(
+    method: string,
+    path: string,
+    body?: unknown,
+    flags: { skipAuthRefresh?: boolean } = {},
+  ): Promise<T> {
     const headers: Record<string, string> = { 'Content-Type': 'application/json', Accept: 'application/json' };
     const access = opts.tokens ? await opts.tokens.getAccessToken() : null;
     if (access) headers.Authorization = 'Bearer ' + access;
@@ -60,45 +113,61 @@ export function createApiClient(opts: ApiClientOptions) {
     }
 
     let res = await doFetch(headers);
-    if (res.status === 401 && opts.tokens) {
-      const refresh = await opts.tokens.getRefreshToken();
-      const refreshed = await fetch(base + '/api/auth/refresh', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(refresh ? { refreshToken: refresh } : {}),
-      });
-      if (refreshed.ok) {
-        const data = (await refreshed.json()) as AuthSession;
-        await opts.tokens.setTokens(data.accessToken, data.refreshToken ?? null);
-        headers.Authorization = 'Bearer ' + data.accessToken;
+    const isRefreshPath = path === '/api/auth/refresh' || path.startsWith('/api/auth/refresh?');
+    if (res.status === 401 && opts.tokens && !flags.skipAuthRefresh && !isRefreshPath) {
+      const newAccess = await performRefresh();
+      if (newAccess) {
+        headers.Authorization = 'Bearer ' + newAccess;
         res = await doFetch(headers);
       } else {
-        await opts.tokens.clear();
-        onUnauthorized?.();
         throw new Error('Unauthorized');
       }
     }
     if (!res.ok) {
-      if (res.status === 401) onUnauthorized?.();
+      if (res.status === 401) notifyUnauthorizedOnce();
       const text = await res.text();
-      throw new Error(method + ' ' + path + ' â†’ ' + res.status + ' ' + text);
+      throw new Error(method + ' ' + path + ' → ' + res.status + ' ' + text);
     }
     if (res.status === 204) return undefined as T;
     return (await res.json()) as T;
   }
 
   return {
+    /** Expose for session boot / tests — shares the serialized refresh promise. */
+    _performRefresh: performRefresh,
     auth: {
       login: async (email: string, password: string) => {
-        const session = await request<AuthSession>('POST', '/api/auth/login', { email, password });
+        const session = await request<AuthSession>('POST', '/api/auth/login', { email, password }, { skipAuthRefresh: true });
         if (opts.tokens) await opts.tokens.setTokens(session.accessToken, session.refreshToken ?? null);
+        resetUnauthorizedGate();
         return session;
       },
+      /**
+       * Refresh session. Prefer HTTP-only cookie (empty body) for web;
+       * optional body refreshToken for native clients that store a refresh token securely.
+       * Never write refresh tokens to localStorage — callers control the TokenStore.
+       */
       refresh: (refreshToken?: string) =>
-        request<AuthSession>('POST', '/api/auth/refresh', refreshToken ? { refreshToken } : {}),
+        request<AuthSession>(
+          'POST',
+          '/api/auth/refresh',
+          refreshToken ? { refreshToken } : {},
+          { skipAuthRefresh: true },
+        ),
+      /** Boot helper: restore access from cookie/refresh without redirect thrash. */
+      restoreSession: async () => {
+        if (!opts.tokens) return null;
+        const existing = await opts.tokens.getAccessToken();
+        if (existing) return existing;
+        return performRefresh();
+      },
       logout: async (refreshToken?: string) => {
-        const out = await request<{ ok: boolean }>('POST', '/api/auth/logout', refreshToken ? { refreshToken } : {});
+        const out = await request<{ ok: boolean }>(
+          'POST',
+          '/api/auth/logout',
+          refreshToken ? { refreshToken } : {},
+          { skipAuthRefresh: true },
+        );
         if (opts.tokens) await opts.tokens.clear();
         return out;
       },
@@ -210,6 +279,7 @@ export function createApiClient(opts: ApiClientOptions) {
         const qs = params.toString();
         return request<PaymentSummary[]>('GET', '/api/payments' + (qs ? '?' + qs : ''));
       },
+      get: (id: string) => request<PaymentSummary>('GET', '/api/payments/' + id),
       create: (body: Record<string, unknown>) => request<PaymentSummary>('POST', '/api/payments', body),
       void: (id: string, reason: string) =>
         request<PaymentSummary>('POST', '/api/payments/' + id + '/void', { reason }),
@@ -293,4 +363,3 @@ export function createApiClient(opts: ApiClientOptions) {
 }
 
 export type BhairavaApi = ReturnType<typeof createApiClient>;
-
