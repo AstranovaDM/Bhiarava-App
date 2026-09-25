@@ -2,6 +2,10 @@ import { Link, NavLink, Navigate, Route, Routes, useNavigate, useParams } from '
 import { FormEvent, ReactNode, useCallback, useEffect, useState } from 'react';
 import { api, tokens } from './api';
 import { PlotCanvas, type CanvasTool, type CanvasPlot } from './PlotCanvas';
+import { ReceiptDetailPage, ReceiptsListPage } from './pages/Receipts';
+import { NotificationsPage } from './pages/Notifications';
+import { CustomerOnboardingPage, LeadConversionPage } from './pages/Onboarding';
+import { ProjectWorkspacePage } from './pages/ProjectSetup';
 import { isMappedPolygon, type NormPoint } from '@bhairava/domain';
 
 type AnyRow = Record<string, any>;
@@ -86,6 +90,8 @@ function Shell({ children }: { children: ReactNode }) {
         <NavLink to="/layouts">Layouts</NavLink>
         <div className="section">CRM / Sales</div>
         <NavLink to="/customers">Customers</NavLink>
+        <NavLink to="/customers/onboarding">Customer onboarding</NavLink>
+        <NavLink to="/conversion">Lead conversion</NavLink>
         <NavLink to="/leads">Leads</NavLink>
         <NavLink to="/visits">Site visits</NavLink>
         <NavLink to="/reservations">Reservations</NavLink>
@@ -212,7 +218,7 @@ function ProjectsPage() {
     try {
       await (api.projects as any).create({ name: form.name, code: form.code, city: form.city || undefined });
       setForm({ name: '', code: '', city: '' });
-      setMsg('Created');
+      setMsg('Created as DRAFT — open Workspace to complete setup');
       reload();
     } catch (ex: any) {
       setMsg(ex.message || String(ex));
@@ -849,25 +855,28 @@ export function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/" element={<Shell><DashboardPage /></Shell>} />
       <Route path="/projects" element={<Shell><ProjectsPage /></Shell>} />
-      <Route path="/projects/:projectId" element={<Shell><ProjectWorkspace /></Shell>} />
+      <Route path="/projects/:projectId" element={<Shell><ProjectWorkspacePage /></Shell>} />
       <Route path="/projects/:projectId/plots" element={<Shell><PlotsPage /></Shell>} />
       <Route path="/plots" element={<Shell><PlotsPage /></Shell>} />
       <Route path="/layouts" element={<Shell><LayoutsPage /></Shell>} />
       <Route path="/customers" element={<Shell><CustomersPage /></Shell>} />
+      <Route path="/customers/onboarding" element={<Shell><CustomerOnboardingPage /></Shell>} />
+      <Route path="/conversion" element={<Shell><LeadConversionPage /></Shell>} />
       <Route path="/customers/:customerId" element={<Shell><CustomerDetail /></Shell>} />
       <Route path="/leads" element={<Shell><ResourceTable title="Leads" loader={() => api.leads.list() as Promise<AnyRow[]>} columns={[{ key: 'name', label: 'Name' }, { key: 'stage', label: 'Stage' }, { key: 'phone', label: 'Phone' }]} /></Shell>} />
       <Route path="/visits" element={<Shell><ResourceTable title="Site visits" loader={() => api.visits.list() as Promise<AnyRow[]>} columns={[{ key: 'id', label: 'Id' }, { key: 'status', label: 'Status' }, { key: 'scheduledAt', label: 'When' }]} /></Shell>} />
       <Route path="/reservations" element={<Shell><ResourceTable title="Reservations" loader={() => (api as any).reservations.list() as Promise<AnyRow[]>} columns={[{ key: 'id', label: 'Id' }, { key: 'state', label: 'State' }, { key: 'plotId', label: 'Plot' }, { key: 'customerId', label: 'Customer' }, { key: 'expiresAt', label: 'Expires' }]} /></Shell>} />
       <Route path="/bookings" element={<Shell><ResourceTable title="Bookings" loader={() => (api as any).bookings.list() as Promise<AnyRow[]>} columns={[{ key: 'id', label: 'Id' }, { key: 'state', label: 'State' }, { key: 'plotId', label: 'Plot' }, { key: 'customerId', label: 'Customer' }, { key: 'agreementValuePaise', label: 'Agreement' }]} /></Shell>} />
       <Route path="/payments" element={<Shell><ResourceTable title="Payments" loader={() => api.payments.list() as Promise<AnyRow[]>} columns={[{ key: 'id', label: 'Id' }, { key: 'amountPaise', label: 'Amount' }, { key: 'method', label: 'Method' }, { key: 'status', label: 'Status' }]} /></Shell>} />
-      <Route path="/receipts" element={<Shell><ResourceTable title="Receipts" loader={() => (api as any).receipts.list() as Promise<AnyRow[]>} columns={[{ key: 'receiptNumber', label: 'Receipt #' }, { key: 'issuedAt', label: 'Issued' }, { key: 'bookingId', label: 'Booking' }, { key: 'paymentId', label: 'Payment' }]} /></Shell>} />
+      <Route path="/receipts" element={<Shell><ReceiptsListPage /></Shell>} />
+      <Route path="/receipts/:receiptId" element={<Shell><ReceiptDetailPage /></Shell>} />
       <Route path="/commissions" element={<Shell><ResourceTable title="Commissions" loader={() => (api as any).commissions.list() as Promise<AnyRow[]>} columns={[{ key: 'id', label: 'Id' }, { key: 'amountPaise', label: 'Amount' }, { key: 'status', label: 'Status' }, { key: 'bookingId', label: 'Booking' }]} /></Shell>} />
       <Route path="/collections" element={<Shell><ResourceTable title="Payment schedules / collections" loader={() => (api as any).paymentSchedules.list() as Promise<AnyRow[]>} columns={[{ key: 'name', label: 'Installment' }, { key: 'dueDate', label: 'Due' }, { key: 'amountDuePaise', label: 'Amount' }, { key: 'status', label: 'Status' }, { key: 'bookingId', label: 'Booking' }]} /></Shell>} />
       <Route path="/documents" element={<Shell><DocumentsPage /></Shell>} />
       <Route path="/registrations" element={<Shell><ResourceTable title="Registrations" loader={() => (api as any).registrations.list() as Promise<AnyRow[]>} columns={[{ key: 'id', label: 'Id' }, { key: 'status', label: 'Status' }, { key: 'deedNumber', label: 'Deed #' }, { key: 'registeredAt', label: 'Registered' }]} /></Shell>} />
       <Route path="/resale" element={<Shell><ResourceTable title="Resale listings" loader={() => (api as any).resales.list() as Promise<AnyRow[]>} columns={[{ key: 'id', label: 'Id' }, { key: 'status', label: 'Status' }, { key: 'askingPricePaise', label: 'Ask' }, { key: 'plotId', label: 'Plot' }, { key: 'customerId', label: 'Customer' }]} /></Shell>} />
       <Route path="/agents" element={<Shell><ResourceTable title="Agents" loader={() => (api as any).agents.list() as Promise<AnyRow[]>} columns={[{ key: 'code', label: 'Code' }, { key: 'name', label: 'Name' }, { key: 'phone', label: 'Phone' }, { key: 'region', label: 'Region' }, { key: 'status', label: 'Status' }]} /></Shell>} />
-      <Route path="/notifications" element={<Shell><ResourceTable title="Notifications" loader={async () => { const r = await (api as any).notifications.list(); return Array.isArray(r) ? r : []; }} columns={[{ key: 'title', label: 'Title' }, { key: 'channel', label: 'Channel' }, { key: 'createdAt', label: 'When' }]} /></Shell>} />
+      <Route path="/notifications" element={<Shell><NotificationsPage /></Shell>} />
       <Route path="/reports/sales" element={<Shell><ReportsPage focus="sales" /></Shell>} />
       <Route path="/reports/inventory" element={<Shell><ReportsPage focus="inventory" /></Shell>} />
       <Route path="/reports/collections" element={<Shell><ReportsPage focus="collections" /></Shell>} />
