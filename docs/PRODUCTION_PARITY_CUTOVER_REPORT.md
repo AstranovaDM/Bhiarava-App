@@ -1,7 +1,7 @@
-﻿# Bhairava Production Parity + Cutover Report
+# Bhairava Production Parity + Cutover Report
 
 **Branch:** `feat/production-platform`  
-**Tip SHA:** `4471863` (`447186335972814496d573f579cd9dc6ff028689`)  
+**Tip SHA:** `bf1c282` (`bf1c282198d830e3e4da4d8b8ddc865169c32928`)  
 **Date:** 2026-09-25 IST  
 **Machine:** Windows `b1a1fbdb-c95f-4dec-bacb-6d16fae8d5c5`  
 **Path:** `C:\Users\HP\Downloads\Bhairava App`  
