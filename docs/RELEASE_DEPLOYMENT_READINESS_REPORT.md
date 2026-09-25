@@ -3,15 +3,17 @@
 **Generated:** 2026-09-25 IST  
 **Branch:** `feat/production-platform`  
 **Start tip:** `4a9d5b9`  
-**Current tip:** `501ff67` (`501ff6750387b851aad4ef60cbf4bf30e7e2e876`)  
+**Current tip:** `bb1730b` (`bb1730b91d4ad0fa0ef054dab7cf3833a3310d80`)  
 **Push status:** **NOT PUSHED** (explicit stop at push boundary)
 
 ## Commits since start tip
 
-```
+`
+f4623d8 docs(release): tip SHA 8b59d83 on readiness report
+8b59d83 docs(release): readiness report + gate fixes (PDF test, scan allowlist, mobile skipLibCheck)
 501ff67 feat(release): receipt PDF, security headers/CORS, staging/prod contracts, bootstrap guards
 c84126f chore(release): hygiene â€” gitignore, untrack QA shots, strip demo login defaults, secret-scan
-```
+`
 
 *(Plus follow-up commit(s) for gate fixes / this report if present after this document lands.)*
 
@@ -192,17 +194,11 @@ See `docs/MOBILE_RELEASE.md`.
 
 Verify tip, then:
 
-```bash
-cd "C:\Users\HP\Downloads\Bhairava App"
-git status
-git log --oneline -5
-git remote -v
-
-# First push of branch (no force). Confirm remote URL is the intended production GitHub repo.
-git push -u origin feat/production-platform
-
-# Optional later (separate approval): open PR
-# gh pr create --base main --head feat/production-platform --title "Production platform readiness" --body "See docs/RELEASE_DEPLOYMENT_READINESS_REPORT.md"
+```
+bb1730b docs(release): tip SHA 8b59d83 on readiness report
+8b59d83 docs(release): readiness report + gate fixes (PDF test, scan allowlist, mobile skipLibCheck)
+501ff67 feat(release): receipt PDF, security headers/CORS, staging/prod contracts, bootstrap guards
+c84126f chore(release): hygiene â€” gitignore, untrack QA shots, strip demo login defaults, secret-scan
 ```
 
 **Do not** `git push --force`. **Do not** deploy from this phase.
@@ -232,4 +228,4 @@ git push -u origin feat/production-platform
 
 ---
 
-*End of report. Tip SHA at report authoring: `501ff67`.*
+*End of report. Tip SHA at report authoring: `bb1730b`.*
