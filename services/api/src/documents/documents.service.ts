@@ -37,7 +37,7 @@ export class DocumentsService {
     if (actor.roleCode === 'CUSTOMER') {
       where.customer = { userId: actor.userId };
     }
-    return this.prisma.document.findMany({
+    const rows = await this.prisma.document.findMany({
       where,
       orderBy: { createdAt: 'desc' },
       select: {
@@ -46,6 +46,11 @@ export class DocumentsService {
         sizeBytes: true, version: true, createdAt: true,
       },
     });
+    // BigInt sizeBytes → string at DTO boundary (global interceptor also covers this)
+    return rows.map((d) => ({
+      ...d,
+      sizeBytes: d.sizeBytes != null ? d.sizeBytes.toString() : null,
+    }));
   }
 
   async create(actor: AuthPrincipal, body: {
@@ -98,7 +103,8 @@ export class DocumentsService {
     return {
       document: {
         id: doc.id, title: doc.title, visibility: doc.visibility, mimeType: doc.mimeType,
-        sizeBytes: doc.sizeBytes != null ? Number(doc.sizeBytes) : null, version: doc.version, createdAt: doc.createdAt,
+        sizeBytes: doc.sizeBytes != null ? doc.sizeBytes.toString() : null,
+        version: doc.version, createdAt: doc.createdAt,
       },
       upload,
     };
@@ -147,7 +153,8 @@ export class DocumentsService {
     return {
       document: {
         id: updated.id, title: updated.title, version: updated.version,
-        mimeType: updated.mimeType, sizeBytes: updated.sizeBytes != null ? Number(updated.sizeBytes) : null,
+        mimeType: updated.mimeType,
+        sizeBytes: updated.sizeBytes != null ? updated.sizeBytes.toString() : null,
       },
       upload,
     };
@@ -192,6 +199,17 @@ export class DocumentsService {
         actorId: actor.userId,
       });
     }
-    return updated;
+    return {
+      id: updated.id,
+      title: updated.title,
+      visibility: updated.visibility,
+      docType: updated.docType,
+      mimeType: updated.mimeType,
+      sizeBytes: updated.sizeBytes != null ? updated.sizeBytes.toString() : null,
+      version: updated.version,
+      customerId: updated.customerId,
+      bookingId: updated.bookingId,
+      projectId: updated.projectId,
+    };
   }
 }

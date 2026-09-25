@@ -34,6 +34,16 @@ export class ReservationsService {
    */
   async reserve(actor: AuthPrincipal, input: CreateReservationInput) {
     const holdHours = input.holdHours ?? DEFAULT_RESERVATION_HOURS;
+
+    let resolvedAgentId = input.agentId;
+    if (actor.roleCode === 'AGENT') {
+      const agent = await this.prisma.agentProfile.findFirst({
+        where: { userId: actor.userId, organizationId: actor.organizationId },
+      });
+      if (!agent) throw new BadRequestException('Agent profile required to reserve');
+      resolvedAgentId = agent.id;
+    }
+
     let result;
     try {
     result = await this.prisma.$transaction(
@@ -55,13 +65,20 @@ export class ReservationsService {
           throw new ConflictException(`Plot is ${plot.status}, cannot reserve`);
         }
         if (!isTransitionAllowed(plot.status, PlotStatus.RESERVED)) {
-          throw new BadRequestException(`Transition ${plot.status} â†’ RESERVED not allowed`);
+          throw new BadRequestException(`Transition ${plot.status} → RESERVED not allowed`);
         }
 
         const customer = await tx.customer.findFirst({
           where: { id: input.customerId, organizationId: actor.organizationId },
         });
         if (!customer) throw new NotFoundException('Customer not found');
+
+        if (actor.roleCode === 'AGENT' && customer.agentId && customer.agentId !== resolvedAgentId) {
+          throw new NotFoundException('Customer not found');
+        }
+        if (!resolvedAgentId) {
+          resolvedAgentId = customer.agentId ?? undefined;
+        }
 
         const now = new Date();
         const expiresAt = new Date(now.getTime() + holdHours * 3600 * 1000);
@@ -72,7 +89,7 @@ export class ReservationsService {
             projectId: plot.projectId,
             plotId: plot.id,
             customerId: customer.id,
-            agentId: input.agentId,
+            agentId: resolvedAgentId,
             leadId: input.leadId,
             state: ReservationState.ACTIVE,
             reservedAt: now,
@@ -142,23 +159,89 @@ export class ReservationsService {
       actorId: actor.userId,
     });
 
-    return result;
+    return {
+      ...result,
+      amountPaise: result.amountPaise != null ? result.amountPaise.toString() : null,
+    };
   }
 
   
   async list(actor: AuthPrincipal, q: { projectId?: string; state?: string } = {}) {
-    return this.prisma.reservation.findMany({
+    let myAgentId: string | null = null;
+    let allAgentsAccess = false;
+    if (actor.roleCode === 'AGENT') {
+      const agent = await this.prisma.agentProfile.findFirst({
+        where: { userId: actor.userId, organizationId: actor.organizationId },
+      });
+      if (!agent) return [];
+      myAgentId = agent.id;
+      allAgentsAccess = agent.allAgentsAccess;
+    }
+
+    const rows = await this.prisma.reservation.findMany({
       where: {
         organizationId: actor.organizationId,
         ...(q.projectId ? { projectId: q.projectId } : {}),
         ...(q.state ? { state: q.state as any } : {}),
+        ...(actor.roleCode === 'CUSTOMER'
+          ? { customer: { userId: actor.userId } }
+          : {}),
+        ...(actor.roleCode === 'AGENT' && myAgentId && !allAgentsAccess
+          ? {
+              OR: [
+                { agentId: myAgentId },
+                { customer: { agentId: myAgentId } },
+              ],
+            }
+          : {}),
       },
       orderBy: { reservedAt: 'desc' },
       take: 200,
       include: {
         plot: { select: { id: true, number: true, status: true } },
-        customer: { select: { id: true, name: true, phone: true } },
+        customer: {
+          select: {
+            id: true, name: true, phone: true, email: true, city: true, agentId: true,
+          },
+        },
+        agent: { select: { id: true, code: true, name: true } },
       },
+    });
+
+    return rows.map((r) => {
+      const owns =
+        actor.roleCode !== 'AGENT' ||
+        allAgentsAccess ||
+        r.agentId === myAgentId ||
+        r.customer.agentId === myAgentId;
+      // Agents without ownership should not see this row (filtered above); redact defensively
+      const customer = owns
+        ? {
+            id: r.customer.id,
+            name: r.customer.name,
+            phone: r.customer.phone,
+            email: r.customer.email,
+            city: r.customer.city,
+            agentId: r.customer.agentId,
+            redacted: false,
+          }
+        : {
+            id: r.customer.id,
+            name: null,
+            phone: null,
+            email: null,
+            city: null,
+            agentId: r.customer.agentId,
+            redacted: true,
+            reason: 'Agent may not view unrelated customer PII',
+          };
+      return {
+        ...r,
+        amountPaise: r.amountPaise != null ? r.amountPaise.toString() : null,
+        customer,
+        agent: r.agent,
+        responsibleAgent: r.agent,
+      };
     });
   }
 
@@ -245,7 +328,10 @@ export class ReservationsService {
         actorId: actor.userId,
       });
     }
-    return updated;
+    return {
+      ...updated,
+      amountPaise: updated.amountPaise != null ? updated.amountPaise.toString() : null,
+    };
   }
 }
 

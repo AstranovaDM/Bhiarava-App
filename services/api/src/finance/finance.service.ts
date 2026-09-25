@@ -34,7 +34,10 @@ export class FinanceService {
       entityId: paymentId,
       metaJson: { reason: reason.trim() },
     });
-    return updated;
+    return {
+      ...updated,
+      amountPaise: updated.amountPaise.toString(),
+    };
   }
 
   async adjustPayment(actor: AuthPrincipal, paymentId: string, input: { reason: string; notes?: string }) {
@@ -59,6 +62,9 @@ export class FinanceService {
       entityId: paymentId,
       metaJson: { reason: input.reason },
     });
-    return updated;
+    return {
+      ...updated,
+      amountPaise: updated.amountPaise.toString(),
+    };
   }
 }

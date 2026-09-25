@@ -76,7 +76,17 @@ function Shell({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Table({ title, rows, cols, err }: { title: string; rows: Row[]; cols: Array<{ key: string; label: string }>; err?: string }) {
+function Table({
+  title,
+  rows,
+  cols,
+  err,
+}: {
+  title: string;
+  rows: Row[];
+  cols: Array<{ key: string; label: string; render?: (r: Row) => string }>;
+  err?: string;
+}) {
   return (
     <div>
       <h1>{title}</h1>
@@ -86,7 +96,11 @@ function Table({ title, rows, cols, err }: { title: string; rows: Row[]; cols: A
           <thead><tr>{cols.map((c) => <th key={c.key}>{c.label}</th>)}</tr></thead>
           <tbody>
             {rows.map((r, i) => (
-              <tr key={r.id || i}>{cols.map((c) => <td key={c.key}>{String(r[c.key] ?? '—')}</td>)}</tr>
+              <tr key={r.id || i}>
+                {cols.map((c) => (
+                  <td key={c.key}>{c.render ? c.render(r) : String(r[c.key] ?? '—')}</td>
+                ))}
+              </tr>
             ))}
           </tbody>
         </table>
@@ -321,7 +335,36 @@ function LeadsPage() { const { rows, err } = useRows(() => api.leads.list() as a
 function VisitsPage() { const { rows, err } = useRows(() => api.visits.list() as any); return <Table title="Site visits" rows={rows} cols={[{ key: 'id', label: 'Id' }, { key: 'status', label: 'Status' }, { key: 'scheduledAt', label: 'When' }]} err={err} />; }
 function CustomersPage() { const { rows, err } = useRows(() => api.customers.list() as any); return <Table title="Customers" rows={rows} cols={[{ key: 'name', label: 'Name' }, { key: 'phone', label: 'Phone' }, { key: 'city', label: 'City' }]} err={err} />; }
 function ReservationsPage() { const { rows, err } = useRows(() => (api as any).reservations.list() as any); return <Table title="Reservations" rows={rows} cols={[{ key: 'id', label: 'Id' }, { key: 'state', label: 'State' }, { key: 'plotId', label: 'Plot' }, { key: 'expiresAt', label: 'Expires' }]} err={err} />; }
-function BookingsPage() { const { rows, err } = useRows(() => (api as any).bookings.list() as any); return <Table title="Bookings" rows={rows} cols={[{ key: 'id', label: 'Id' }, { key: 'state', label: 'State' }, { key: 'plotId', label: 'Plot' }]} err={err} />; }
+function BookingsPage() {
+  const { rows, err } = useRows(() => (api as any).bookings.list() as any);
+  return (
+    <Table
+      title="Bookings"
+      rows={rows}
+      cols={[
+        { key: 'id', label: 'Id' },
+        { key: 'state', label: 'State' },
+        { key: 'plotId', label: 'Plot' },
+        {
+          key: 'customer',
+          label: 'Customer',
+          render: (r) =>
+            r.customer?.redacted
+              ? '—'
+              : String(r.customer?.name || r.customerId || '—'),
+        },
+        {
+          key: 'responsibleAgent',
+          label: 'Agent',
+          render: (r) =>
+            String(r.responsibleAgent?.code || r.agent?.code || r.agentId || '—'),
+        },
+        { key: 'agreementValuePaise', label: 'Agreement (paise)' },
+      ]}
+      err={err}
+    />
+  );
+}
 function CollectionsPage() { const { rows, err } = useRows(() => (api as any).paymentSchedules.list() as any); return <Table title="Collections / schedules" rows={rows} cols={[{ key: 'name', label: 'Installment' }, { key: 'dueDate', label: 'Due' }, { key: 'amountDuePaise', label: 'Amount' }, { key: 'status', label: 'Status' }]} err={err} />; }
 function CommissionsPage() { const { rows, err } = useRows(() => (api as any).commissions.list() as any); return <Table title="Commissions" rows={rows} cols={[{ key: 'amountPaise', label: 'Amount' }, { key: 'status', label: 'Status' }, { key: 'bookingId', label: 'Booking' }]} err={err} />; }
 function DocumentsPage() { const { rows, err } = useRows(() => api.documents.list() as any); return <Table title="Documents" rows={rows} cols={[{ key: 'title', label: 'Title' }, { key: 'visibility', label: 'Visibility' }, { key: 'version', label: 'Version' }]} err={err} />; }

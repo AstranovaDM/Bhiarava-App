@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { BookingState, PlotStatus, Prisma, ReservationState, StatusChangeSource } from '@prisma/client';
+import { projectCustomerPii } from '@bhairava/domain';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -21,6 +22,36 @@ export type CreateBookingInput = {
   notes?: string;
 };
 
+type BookingListRow = {
+  id: string;
+  organizationId: string;
+  projectId: string;
+  plotId: string;
+  customerId: string;
+  agentId: string | null;
+  reservationId: string | null;
+  state: BookingState;
+  bookedAt: Date;
+  agreementValuePaise: bigint;
+  advancePaise: bigint;
+  cancelRequestStatus: string | null;
+  cancelReason: string | null;
+  notes: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  plot: { id: string; number: string; status: PlotStatus };
+  customer: {
+    id: string;
+    name: string;
+    phone: string;
+    email: string | null;
+    city: string | null;
+    agentId: string | null;
+    userId: string | null;
+  };
+  agent: { id: string; code: string; name: string; userId: string } | null;
+};
+
 @Injectable()
 export class BookingsService {
   constructor(
@@ -29,38 +60,157 @@ export class BookingsService {
     private readonly notifications: NotificationsService,
   ) {}
 
-  
-  async list(actor: AuthPrincipal, q: { projectId?: string; customerId?: string } = {}) {
-    const rows = await this.prisma.booking.findMany({
-      where: {
-        organizationId: actor.organizationId,
-        ...(q.projectId ? { projectId: q.projectId } : {}),
-        ...(q.customerId ? { customerId: q.customerId } : {}),
-        ...(actor.roleCode === 'CUSTOMER'
-          ? { customer: { userId: actor.userId } }
-          : {}),
-        ...(actor.roleCode === 'AGENT'
-          ? { agent: { userId: actor.userId } }
-          : {}),
+  private roleLabel(actor: AuthPrincipal) {
+    const map: Record<string, string> = {
+      FOUNDER: 'Founder',
+      ADMINISTRATOR: 'Administrator',
+      FINANCE: 'Finance',
+      VIEWER: 'Viewer',
+      AGENT: 'Agent',
+      CUSTOMER: 'Customer',
+    };
+    return map[actor.roleCode] ?? 'Viewer';
+  }
+
+  private async agentProfileFor(actor: AuthPrincipal) {
+    return this.prisma.agentProfile.findFirst({
+      where: { userId: actor.userId, organizationId: actor.organizationId },
+    });
+  }
+
+  /**
+   * Project a booking for list/detail responses.
+   * Agents only receive customer PII when they own the relationship
+   * (booking.agentId or customer.agentId). Responsible agent is always shown
+   * when present (id/code/name — not unrelated customer PII).
+   */
+  private projectBooking(
+    actor: AuthPrincipal,
+    b: BookingListRow,
+    opts: { ownsRelationship: boolean; isSelf: boolean },
+  ) {
+    const customer = projectCustomerPii(
+      {
+        id: b.customer.id,
+        name: b.customer.name,
+        phone: b.customer.phone,
+        email: b.customer.email,
+        city: b.customer.city,
       },
+      {
+        role: this.roleLabel(actor),
+        ownsRelationship: opts.ownsRelationship,
+        isSelf: opts.isSelf,
+      },
+    );
+    return {
+      id: b.id,
+      organizationId: b.organizationId,
+      projectId: b.projectId,
+      plotId: b.plotId,
+      customerId: b.customerId,
+      agentId: b.agentId,
+      reservationId: b.reservationId,
+      state: b.state,
+      bookedAt: b.bookedAt,
+      agreementValuePaise: b.agreementValuePaise.toString(),
+      advancePaise: b.advancePaise.toString(),
+      cancelRequestStatus: b.cancelRequestStatus,
+      cancelReason: b.cancelReason,
+      notes: opts.ownsRelationship || actor.roleCode !== 'AGENT' ? b.notes : null,
+      createdAt: b.createdAt,
+      updatedAt: b.updatedAt,
+      plot: b.plot,
+      customer: {
+        id: customer.id,
+        name: customer.name,
+        phone: customer.phone,
+        email: customer.email,
+        city: customer.city,
+        redacted: customer.redacted,
+        reason: customer.reason,
+        agentId: b.customer.agentId,
+      },
+      agent: b.agent
+        ? { id: b.agent.id, code: b.agent.code, name: b.agent.name }
+        : null,
+      responsibleAgent: b.agent
+        ? { id: b.agent.id, code: b.agent.code, name: b.agent.name }
+        : null,
+    };
+  }
+
+  async list(actor: AuthPrincipal, q: { projectId?: string; customerId?: string } = {}) {
+    let myAgentId: string | null = null;
+    let allAgentsAccess = false;
+    if (actor.roleCode === 'AGENT') {
+      const agent = await this.agentProfileFor(actor);
+      if (!agent) return [];
+      myAgentId = agent.id;
+      allAgentsAccess = agent.allAgentsAccess;
+    }
+
+    const where: Prisma.BookingWhereInput = {
+      organizationId: actor.organizationId,
+      ...(q.projectId ? { projectId: q.projectId } : {}),
+      ...(q.customerId ? { customerId: q.customerId } : {}),
+      ...(actor.roleCode === 'CUSTOMER'
+        ? { customer: { userId: actor.userId } }
+        : {}),
+      ...(actor.roleCode === 'AGENT' && myAgentId && !allAgentsAccess
+        ? {
+            OR: [
+              { agentId: myAgentId },
+              { customer: { agentId: myAgentId } },
+            ],
+          }
+        : {}),
+    };
+
+    const rows = await this.prisma.booking.findMany({
+      where,
       orderBy: { bookedAt: 'desc' },
       take: 200,
       include: {
         plot: { select: { id: true, number: true, status: true } },
-        customer: { select: { id: true, name: true, phone: true } },
+        customer: {
+          select: {
+            id: true, name: true, phone: true, email: true, city: true,
+            agentId: true, userId: true,
+          },
+        },
+        agent: { select: { id: true, code: true, name: true, userId: true } },
       },
     });
-    return rows.map((b) => ({
-      ...b,
-      agreementValuePaise: b.agreementValuePaise?.toString?.() ?? String(b.agreementValuePaise),
-      advancePaise: b.advancePaise?.toString?.() ?? String(b.advancePaise ?? 0),
-    }));
+
+    return rows.map((b) => {
+      const owns =
+        actor.roleCode !== 'AGENT' ||
+        allAgentsAccess ||
+        b.agentId === myAgentId ||
+        b.customer.agentId === myAgentId;
+      const isSelf =
+        actor.roleCode === 'CUSTOMER' && b.customer.userId === actor.userId;
+      return this.projectBooking(actor, b as BookingListRow, {
+        ownsRelationship: owns,
+        isSelf,
+      });
+    });
   }
 
   async book(actor: AuthPrincipal, input: CreateBookingInput) {
     const agreementValuePaise = BigInt(input.agreementValuePaise);
     const advancePaise = BigInt(input.advancePaise ?? 0);
     if (agreementValuePaise <= 0n) throw new BadRequestException('agreementValuePaise must be > 0');
+
+    // Agents always attribute bookings to themselves (server-side); staff may pass agentId
+    // or inherit the customer's assigned agent.
+    let resolvedAgentId = input.agentId;
+    if (actor.roleCode === 'AGENT') {
+      const agent = await this.agentProfileFor(actor);
+      if (!agent) throw new BadRequestException('Agent profile required to book');
+      resolvedAgentId = agent.id;
+    }
 
     let result;
     try {
@@ -95,6 +245,10 @@ export class BookingsService {
             where: { id: reservation.id },
             data: { state: ReservationState.CONVERTED },
           });
+          // Prefer explicit agent, else reservation agent, else customer agent
+          if (!resolvedAgentId) {
+            resolvedAgentId = reservation.agentId ?? undefined;
+          }
         } else if (plot.status !== PlotStatus.AVAILABLE && plot.status !== PlotStatus.RESERVED && plot.status !== PlotStatus.RESALE_AVAILABLE) {
           throw new ConflictException(`Plot is ${plot.status}, cannot book`);
         }
@@ -113,13 +267,24 @@ export class BookingsService {
         });
         if (!customer) throw new NotFoundException('Customer not found');
 
+        if (actor.roleCode === 'AGENT') {
+          // Agent may only book for customers they own (or unassigned that they claim via this booking)
+          if (customer.agentId && customer.agentId !== resolvedAgentId) {
+            throw new NotFoundException('Customer not found');
+          }
+        }
+
+        if (!resolvedAgentId) {
+          resolvedAgentId = customer.agentId ?? undefined;
+        }
+
         const booking = await tx.booking.create({
           data: {
             organizationId: actor.organizationId,
             projectId: plot.projectId,
             plotId: plot.id,
             customerId: customer.id,
-            agentId: input.agentId,
+            agentId: resolvedAgentId,
             reservationId: reservationId,
             state: BookingState.ACTIVE,
             agreementValuePaise,
@@ -131,8 +296,19 @@ export class BookingsService {
         const fromStatus = plot.status;
         await tx.plot.update({
           where: { id: plot.id },
-          data: { status: PlotStatus.BOOKED, customerId: customer.id, agentId: input.agentId },
+          data: {
+            status: PlotStatus.BOOKED,
+            customerId: customer.id,
+            agentId: resolvedAgentId,
+          },
         });
+        // Ensure customer is attributed to the responsible agent when previously unassigned
+        if (resolvedAgentId && !customer.agentId) {
+          await tx.customer.update({
+            where: { id: customer.id },
+            data: { agentId: resolvedAgentId },
+          });
+        }
         await tx.plotStatusHistory.create({
           data: {
             plotId: plot.id,
@@ -166,7 +342,7 @@ export class BookingsService {
       action: 'booking.create',
       entityType: 'Booking',
       entityId: result.id,
-      metaJson: { plotId: input.plotId, customerId: input.customerId },
+      metaJson: { plotId: input.plotId, customerId: input.customerId, agentId: result.agentId },
     });
     const cust = await this.prisma.customer.findUnique({ where: { id: result.customerId }, select: { userId: true } });
     if (cust?.userId) {
@@ -187,10 +363,20 @@ export class BookingsService {
       payloadJson: { kind: 'booking_created', bookingId: result.id, plotId: result.plotId, href: '/bookings' },
       actorId: actor.userId,
     });
+
+    const agent = result.agentId
+      ? await this.prisma.agentProfile.findUnique({
+          where: { id: result.agentId },
+          select: { id: true, code: true, name: true },
+        })
+      : null;
+
     return {
       ...result,
       agreementValuePaise: result.agreementValuePaise.toString(),
       advancePaise: result.advancePaise.toString(),
+      agent,
+      responsibleAgent: agent,
     };
   }
 }

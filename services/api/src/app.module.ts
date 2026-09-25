@@ -1,7 +1,7 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
@@ -24,6 +24,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { OpsModule } from './ops/ops.module';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { BigIntJsonInterceptor } from './common/serialize/bigint-json.interceptor';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
+    { provide: APP_INTERCEPTOR, useClass: BigIntJsonInterceptor },
   ],
 })
 export class AppModule implements NestModule {
