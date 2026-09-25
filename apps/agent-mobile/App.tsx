@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, FlatList, SafeAreaView, Text, TextInput, View } from 'react-native';
+import { Button, FlatList, SafeAreaView, Text, TextInput, View, ScrollView } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
@@ -10,12 +10,13 @@ const Tab = createBottomTabNavigator();
 function useLiveList(loader: () => Promise<string[]>) {
   const [rows, setRows] = useState<string[]>(['Loading...']);
   const [err, setErr] = useState('');
-  useEffect(() => {
+  const reload = () => {
     loader()
       .then((xs) => setRows(xs.length ? xs : ['No rows']))
       .catch((e) => { setErr(String(e?.message || e)); setRows([]); });
-  }, []);
-  return { rows, err };
+  };
+  useEffect(() => { reload(); }, []);
+  return { rows, err, reload };
 }
 
 function ListScreen({ title, loader }: { title: string; loader: () => Promise<string[]> }) {
@@ -29,11 +30,46 @@ function ListScreen({ title, loader }: { title: string; loader: () => Promise<st
   );
 }
 
+function ComposeScreen() {
+  const [leadName, setLeadName] = useState('');
+  const [leadPhone, setLeadPhone] = useState('');
+  const [custName, setCustName] = useState('');
+  const [custPhone, setCustPhone] = useState('');
+  const [plotId, setPlotId] = useState('');
+  const [customerId, setCustomerId] = useState('');
+  const [msg, setMsg] = useState('');
+  const [err, setErr] = useState('');
+  return (
+    <SafeAreaView style={{ flex: 1 }}>
+      <ScrollView contentContainerStyle={{ padding: 16 }}>
+        <Text style={{ fontSize: 22, fontWeight: '700', marginBottom: 12 }}>Create / reserve</Text>
+        {msg ? <Text style={{ color: '#15803d' }}>{msg}</Text> : null}
+        {err ? <Text style={{ color: '#b91c1c' }}>{err}</Text> : null}
+        <Text style={{ fontWeight: '600', marginTop: 8 }}>New lead</Text>
+        <TextInput placeholder="Name" value={leadName} onChangeText={setLeadName} style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, padding: 10, marginVertical: 4 }} />
+        <TextInput placeholder="Phone" value={leadPhone} onChangeText={setLeadPhone} style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, padding: 10, marginVertical: 4 }} />
+        <Button title="Create lead" onPress={async () => { setErr(''); try { await api.leads.create({ name: leadName, phone: leadPhone } as any); setMsg('Lead created'); setLeadName(''); setLeadPhone(''); } catch (e: any) { setErr(e.message || String(e)); } }} />
+        <Text style={{ fontWeight: '600', marginTop: 16 }}>New customer</Text>
+        <TextInput placeholder="Name" value={custName} onChangeText={setCustName} style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, padding: 10, marginVertical: 4 }} />
+        <TextInput placeholder="Phone" value={custPhone} onChangeText={setCustPhone} style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, padding: 10, marginVertical: 4 }} />
+        <Button title="Create customer" onPress={async () => { setErr(''); try { const c: any = await api.customers.create({ name: custName, phone: custPhone } as any); setMsg('Customer ' + c.id); setCustomerId(c.id); setCustName(''); setCustPhone(''); } catch (e: any) { setErr(e.message || String(e)); } }} />
+        <Text style={{ fontWeight: '600', marginTop: 16 }}>Reserve / book</Text>
+        <TextInput placeholder="Customer id" value={customerId} onChangeText={setCustomerId} style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, padding: 10, marginVertical: 4 }} />
+        <TextInput placeholder="Plot id" value={plotId} onChangeText={setPlotId} style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, padding: 10, marginVertical: 4 }} />
+        <View style={{ height: 8 }} />
+        <Button title="Reserve plot" onPress={async () => { setErr(''); try { await api.reservations.create({ plotId, customerId }); setMsg('Reserved'); } catch (e: any) { setErr(e.message || String(e)); } }} />
+        <View style={{ height: 8 }} />
+        <Button title="Book plot" onPress={async () => { setErr(''); try { await api.bookings.create({ plotId, customerId, agreementValuePaise: '200000000', advancePaise: '1000000' } as any); setMsg('Booked'); } catch (e: any) { setErr(e.message || String(e)); } }} />
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
 function MoreScreen() {
   return (
     <SafeAreaView style={{ flex: 1, padding: 16 }}>
       <Text style={{ fontSize: 22, fontWeight: '700' }}>More</Text>
-      <Text style={{ marginTop: 8, color: '#64748b' }}>SecureStore auth · live API ownership filters. Store signing BLOCKED BY EXTERNAL CREDENTIAL.</Text>
+      <Text style={{ marginTop: 8, color: '#64748b' }}>SecureStore auth · live API. Store signing BLOCKED BY EXTERNAL CREDENTIAL.</Text>
       <View style={{ height: 12 }} />
       <Button title="Sign out" onPress={async () => { try { await api.auth.logout(); } catch {} await tokens.clear(); }} />
     </SafeAreaView>
@@ -65,8 +101,8 @@ export default function App() {
       <StatusBar style="dark" />
       <Tab.Navigator>
         <Tab.Screen name="Home" children={() => <ListScreen title="Home" loader={async () => { const [l, v, b] = await Promise.all([api.leads.list(), api.visits.list(), (api as any).bookings.list()]); return ['Leads ' + l.length, 'Visits ' + v.length, 'Bookings ' + b.length]; }} />} />
-        <Tab.Screen name="Projects" children={() => <ListScreen title="Projects / plots" loader={async () => (await api.projects.list()).map((p: any) => p.name + ' · ' + (p.lifecycleStatus || ''))} />} />
-        <Tab.Screen name="Leads" children={() => <ListScreen title="Leads" loader={async () => (await api.leads.list()).map((l: any) => l.name + ' · ' + l.stage)} />} />
+        <Tab.Screen name="Projects" children={() => <ListScreen title="Projects" loader={async () => (await api.projects.list()).map((p: any) => p.name + ' · ' + (p.lifecycleStatus || ''))} />} />
+        <Tab.Screen name="Compose" children={() => <ComposeScreen />} />
         <Tab.Screen name="CRM" children={() => <ListScreen title="Customers / visits" loader={async () => { const [c, v] = await Promise.all([api.customers.list(), api.visits.list()]); return [...c.map((x: any) => 'Customer ' + x.name), ...v.map((x: any) => 'Visit ' + x.status)]; }} />} />
         <Tab.Screen name="Sales" children={() => <ListScreen title="Sales ops" loader={async () => { const [r, b, c, d, n] = await Promise.all([(api as any).reservations.list(), (api as any).bookings.list(), (api as any).commissions.list(), api.documents.list(), (api as any).notifications.list()]); return ['Reservations ' + r.length, 'Bookings ' + b.length, 'Commissions ' + c.length, 'Documents ' + d.length, 'Notifications ' + n.length]; }} />} />
         <Tab.Screen name="More" children={() => <MoreScreen />} />

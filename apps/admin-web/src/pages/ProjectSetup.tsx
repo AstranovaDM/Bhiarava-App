@@ -107,7 +107,65 @@ export function ProjectWorkspacePage() {
     } catch (ex: any) { setErr(ex.message || String(ex)); }
   }
 
-  const tabs = ['overview', 'setup', 'plot-types', 'pricing', 'amenities', 'visibility', 'layout', 'sales'];
+
+  async function addPhase(e: FormEvent) {
+    e.preventDefault();
+    if (!projectId) return;
+    const fd = new FormData(e.target as HTMLFormElement);
+    try {
+      await (api.projects as any).addPhase(projectId, {
+        name: fd.get('name'),
+        status: fd.get('status') || 'Planned',
+        startDate: fd.get('startDate') || undefined,
+        endDate: fd.get('endDate') || undefined,
+      });
+      (e.target as HTMLFormElement).reset();
+      setMsg('Phase added');
+      reload();
+    } catch (ex: any) { setErr(ex.message || String(ex)); }
+  }
+
+  async function addBlock(e: FormEvent) {
+    e.preventDefault();
+    if (!projectId) return;
+    const fd = new FormData(e.target as HTMLFormElement);
+    try {
+      await (api.projects as any).addBlock(projectId, {
+        name: fd.get('name'),
+        phaseId: fd.get('phaseId') || undefined,
+      });
+      (e.target as HTMLFormElement).reset();
+      setMsg('Block added');
+      reload();
+    } catch (ex: any) { setErr(ex.message || String(ex)); }
+  }
+
+  async function uploadMedia(e: FormEvent) {
+    e.preventDefault();
+    if (!projectId) return;
+    const fd = new FormData(e.target as HTMLFormElement);
+    const fileInput = (e.target as HTMLFormElement).elements.namedItem('file') as HTMLInputElement;
+    const file = fileInput?.files?.[0];
+    try {
+      const kind = String(fd.get('kind') || 'gallery');
+      const meta = await (api.projects as any).mediaUpload(projectId, {
+        kind,
+        originalName: file?.name || 'upload.bin',
+        mimeType: file?.type || 'application/octet-stream',
+        sizeBytes: file?.size || 0,
+        label: fd.get('label') || undefined,
+      });
+      const url = meta?.upload?.uploadUrl;
+      if (url && file) {
+        await fetch(url, { method: 'PUT', headers: { 'Content-Type': file.type || 'application/octet-stream' }, body: file });
+      }
+      setMsg('Media uploaded via presigned URL (' + kind + ')');
+      (e.target as HTMLFormElement).reset();
+      reload();
+    } catch (ex: any) { setErr(ex.message || String(ex)); }
+  }
+
+  const tabs = ['overview', 'setup', 'phases', 'blocks', 'plot-types', 'pricing', 'amenities', 'media', 'visibility', 'layout', 'sales'];
 
   return (
     <div>
@@ -234,6 +292,89 @@ export function ProjectWorkspacePage() {
           </div>
           <button className="btn" type="submit">Publish settings</button>
         </form>
+      )}
+
+
+      {tab === 'phases' && (
+        <div className="card">
+          <h2>Phases</h2>
+          <form className="row" onSubmit={addPhase}>
+            <div><label>Name</label><input name="name" required placeholder="Phase 1" /></div>
+            <div><label>Status</label><select name="status"><option>Planned</option><option>Active</option><option>Completed</option></select></div>
+            <div><label>Start</label><input type="date" name="startDate" /></div>
+            <div><label>End</label><input type="date" name="endDate" /></div>
+            <button className="btn" type="submit">Add phase</button>
+          </form>
+          <table>
+            <thead><tr><th>Name</th><th>Status</th><th>Order</th><th>Start</th><th>End</th><th /></tr></thead>
+            <tbody>
+              {((bundle?.phases as AnyRow[]) || []).map((ph) => (
+                <tr key={ph.id}>
+                  <td>{ph.name}</td><td><span className="chip">{ph.status}</span></td><td>{ph.sortOrder}</td>
+                  <td>{ph.startDate ? String(ph.startDate).slice(0,10) : '—'}</td>
+                  <td>{ph.endDate ? String(ph.endDate).slice(0,10) : '—'}</td>
+                  <td><button type="button" className="btn ghost" onClick={() => void (api.projects as any).removePhase(projectId, ph.id).then(reload)}>Remove</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {tab === 'blocks' && (
+        <div className="card">
+          <h2>Blocks</h2>
+          <form className="row" onSubmit={addBlock}>
+            <div><label>Name</label><input name="name" required placeholder="Block A" /></div>
+            <div><label>Phase</label>
+              <select name="phaseId">
+                <option value="">— none —</option>
+                {((bundle?.phases as AnyRow[]) || []).map((ph) => <option key={ph.id} value={ph.id}>{ph.name}</option>)}
+              </select>
+            </div>
+            <button className="btn" type="submit">Add block</button>
+          </form>
+          <table>
+            <thead><tr><th>Name</th><th>Phase</th><th>Order</th><th /></tr></thead>
+            <tbody>
+              {((bundle?.blocks as AnyRow[]) || []).map((b) => (
+                <tr key={b.id}>
+                  <td>{b.name}</td>
+                  <td>{((bundle?.phases as AnyRow[]) || []).find((ph) => ph.id === b.phaseId)?.name || '—'}</td>
+                  <td>{b.sortOrder}</td>
+                  <td><button type="button" className="btn ghost" onClick={() => void (api.projects as any).removeBlock(projectId, b.id).then(reload)}>Remove</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {tab === 'media' && (
+        <div className="card">
+          <h2>Media</h2>
+          <p className="muted">Cover, brochure, gallery via MinIO presigned upload. Master-plan layouts also under Layouts.</p>
+          <form className="row" onSubmit={uploadMedia}>
+            <div><label>Kind</label>
+              <select name="kind"><option value="cover">Cover</option><option value="brochure">Brochure</option><option value="gallery">Gallery</option></select>
+            </div>
+            <div><label>Label</label><input name="label" placeholder="Optional label" /></div>
+            <div><label>File</label><input name="file" type="file" required /></div>
+            <button className="btn" type="submit">Upload</button>
+          </form>
+          <p className="muted">Cover key: {project?.coverImageKey || '—'} · Brochure: {project?.brochureKey || '—'}</p>
+          <h3>Gallery</h3>
+          <ul>
+            {(Array.isArray((project?.settingsJson as AnyRow)?.gallery) ? ((project?.settingsJson as AnyRow).gallery as AnyRow[]) : []).map((g, i) => (
+              <li key={i}>{String(g.label || g.key)} · {String(g.mimeType || '')}</li>
+            ))}
+          </ul>
+          <h3>Layouts (master plans)</h3>
+          <ul>
+            {((bundle?.layouts as AnyRow[]) || []).map((l) => <li key={l.id}>{l.name} · {l.imageKey || 'no image'}</li>)}
+          </ul>
+          <p><Link to="/layouts">Open interactive layout editor →</Link></p>
+        </div>
       )}
 
       {tab === 'layout' && (

@@ -57,9 +57,11 @@ function Shell({ children }: { children: React.ReactNode }) {
         <Link to="/">Home</Link>
         <Link to="/projects">Projects</Link>
         <Link to="/leads">Leads</Link>
+        <Link to="/leads/new">New lead</Link>
         <Link to="/customers">Customers</Link>
         <Link to="/customers/onboarding">Onboard customer</Link>
         <Link to="/visits">Site visits</Link>
+        <Link to="/visits/new">Schedule visit</Link>
         <Link to="/reservations">Reservations</Link>
         <Link to="/bookings">Bookings</Link>
         <Link to="/collections">Collections</Link>
@@ -144,6 +146,13 @@ function ProjectDetail() {
       setPlots(await api.plots.listByProject(projectId!));
     } catch (e: any) { setErr(e.message || String(e)); }
   }
+  async function book(plotId: string) {
+    try {
+      await api.bookings.create({ plotId, customerId, agreementValuePaise: '200000000', advancePaise: '1000000' } as any);
+      setMsg('Booked');
+      setPlots(await api.plots.listByProject(projectId!));
+    } catch (e: any) { setErr(e.message || String(e)); }
+  }
   return (
     <div>
       <h1>{project?.name || 'Project'}</h1>
@@ -162,7 +171,7 @@ function ProjectDetail() {
                 <td><Link to={`/plots/${p.id}`}>{p.number || p.plotNumber}</Link></td>
                 <td>{p.status}</td>
                 <td>{String(p.areaSqYd ?? '—')}</td>
-                <td><button className="btn secondary" disabled={!customerId || p.status !== 'AVAILABLE'} onClick={() => void reserve(p.id)}>Reserve</button></td>
+                <td><button className="btn secondary" disabled={!customerId || (p.status !== 'AVAILABLE' && p.status !== 'RESERVED')} onClick={() => void reserve(p.id)}>Reserve</button>{' '}<button className="btn" disabled={!customerId} onClick={() => void book(p.id)}>Book</button></td>
               </tr>
             ))}
           </tbody>
@@ -232,6 +241,82 @@ function NotificationsPage() {
 }
 
 
+
+function CreateLeadPage() {
+  const nav = useNavigate();
+  const projects = useRows(() => api.projects.list() as any);
+  const [form, setForm] = useState({ name: '', phone: '', email: '', projectId: '', notes: '' });
+  const [err, setErr] = useState('');
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    try {
+      await api.leads.create({ name: form.name, phone: form.phone, email: form.email || undefined, projectId: form.projectId || undefined, notes: form.notes || undefined } as any);
+      nav('/leads');
+    } catch (ex: any) { setErr(ex.message || String(ex)); }
+  }
+  return (
+    <div>
+      <h1>New lead</h1>
+      <form className="card" onSubmit={submit}>
+        <div className="row">
+          <div><label>Name</label><input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+          <div><label>Phone</label><input required value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
+          <div><label>Email</label><input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
+          <div><label>Project</label>
+            <select value={form.projectId} onChange={(e) => setForm({ ...form, projectId: e.target.value })}>
+              <option value="">—</option>
+              {projects.rows.map((pr) => <option key={pr.id} value={pr.id}>{pr.name}</option>)}
+            </select>
+          </div>
+          <div style={{ flex: '1 1 100%' }}><label>Notes</label><textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
+        </div>
+        {err ? <p className="err">{err}</p> : null}
+        <button className="btn" type="submit">Create lead</button>
+      </form>
+    </div>
+  );
+}
+
+function CreateVisitPage() {
+  const nav = useNavigate();
+  const projects = useRows(() => api.projects.list() as any);
+  const customers = useRows(() => api.customers.list() as any);
+  const [form, setForm] = useState({ projectId: '', customerId: '', scheduledAt: new Date(Date.now() + 86400000).toISOString().slice(0, 16), notes: '' });
+  const [err, setErr] = useState('');
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    try {
+      await api.visits.create({ projectId: form.projectId, customerId: form.customerId || undefined, scheduledAt: new Date(form.scheduledAt).toISOString(), notes: form.notes || undefined } as any);
+      nav('/visits');
+    } catch (ex: any) { setErr(ex.message || String(ex)); }
+  }
+  return (
+    <div>
+      <h1>Schedule site visit</h1>
+      <form className="card" onSubmit={submit}>
+        <div className="row">
+          <div><label>Project</label>
+            <select required value={form.projectId} onChange={(e) => setForm({ ...form, projectId: e.target.value })}>
+              <option value="">Select…</option>
+              {projects.rows.map((pr) => <option key={pr.id} value={pr.id}>{pr.name}</option>)}
+            </select>
+          </div>
+          <div><label>Customer</label>
+            <select value={form.customerId} onChange={(e) => setForm({ ...form, customerId: e.target.value })}>
+              <option value="">—</option>
+              {customers.rows.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <div><label>When</label><input type="datetime-local" required value={form.scheduledAt} onChange={(e) => setForm({ ...form, scheduledAt: e.target.value })} /></div>
+          <div style={{ flex: '1 1 100%' }}><label>Notes</label><textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
+        </div>
+        {err ? <p className="err">{err}</p> : null}
+        <button className="btn" type="submit">Schedule</button>
+      </form>
+    </div>
+  );
+}
+
 function LeadsPage() { const { rows, err } = useRows(() => api.leads.list() as any); return <Table title="My leads" rows={rows} cols={[{ key: 'name', label: 'Name' }, { key: 'stage', label: 'Stage' }, { key: 'phone', label: 'Phone' }]} err={err} />; }
 function VisitsPage() { const { rows, err } = useRows(() => api.visits.list() as any); return <Table title="Site visits" rows={rows} cols={[{ key: 'id', label: 'Id' }, { key: 'status', label: 'Status' }, { key: 'scheduledAt', label: 'When' }]} err={err} />; }
 function CustomersPage() { const { rows, err } = useRows(() => api.customers.list() as any); return <Table title="Customers" rows={rows} cols={[{ key: 'name', label: 'Name' }, { key: 'phone', label: 'Phone' }, { key: 'city', label: 'City' }]} err={err} />; }
@@ -250,7 +335,9 @@ export function App() {
       <Route path="/projects/:projectId" element={<Shell><ProjectDetail /></Shell>} />
       <Route path="/plots/:plotId" element={<Shell><div className="card"><h1>Plot</h1><p className="muted">Detail via project inventory — live API status.</p><Link to="/projects">Back</Link></div></Shell>} />
       <Route path="/leads" element={<Shell><LeadsPage /></Shell>} />
+      <Route path="/leads/new" element={<Shell><CreateLeadPage /></Shell>} />
       <Route path="/visits" element={<Shell><VisitsPage /></Shell>} />
+      <Route path="/visits/new" element={<Shell><CreateVisitPage /></Shell>} />
       <Route path="/customers" element={<Shell><CustomersPage /></Shell>} />
       <Route path="/customers/onboarding" element={<Shell><CustomerOnboard /></Shell>} />
       <Route path="/reservations" element={<Shell><ReservationsPage /></Shell>} />

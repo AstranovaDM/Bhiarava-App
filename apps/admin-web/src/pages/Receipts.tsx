@@ -87,6 +87,7 @@ export function ReceiptDetailPage() {
         <div className="row" style={{ flex: '0 0 auto', minWidth: 0 }}>
           <button className="btn" onClick={printReceipt} data-testid="receipt-print">Print</button>
           <button className="btn secondary" onClick={downloadHtml}>Download HTML</button>
+          <span className="muted no-print">Tip: use browser Print → Save as PDF (A4).</span>
           <Link className="btn ghost" to="/receipts">Back</Link>
         </div>
       </div>
