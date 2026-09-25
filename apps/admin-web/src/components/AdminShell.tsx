@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { AppShell, LoadingState, type AppShellUser, type NavGroup, type NavItem } from '@bhairava/ui-web';
 import { api, tokens } from '../api';
+import { appPath } from '../basePath';
 import { useAuthed } from '../lib/data';
 
 export const adminNavGroups: NavGroup[] = [
@@ -137,7 +138,7 @@ async function signOut() {
     /* ignore — clear local session regardless */
   }
   await tokens.clear();
-  location.href = '/login';
+  location.href = appPath('/login');
 }
 
 function hideFabOn(p: string) {

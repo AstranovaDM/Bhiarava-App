@@ -18,11 +18,34 @@ export class LayoutsService {
     private readonly storage: StorageService,
   ) {}
 
-  list(actor: AuthPrincipal, projectId: string) {
-    return this.prisma.layout.findMany({
+  async list(actor: AuthPrincipal, projectId: string) {
+    const rows = await this.prisma.layout.findMany({
       where: { organizationId: actor.organizationId, projectId },
       orderBy: { name: 'asc' },
     });
+    return Promise.all(
+      rows.map(async (row) => {
+        let downloadUrl: string | null = null;
+        if (row.imageKey) {
+          try {
+            downloadUrl = (await this.storage.getDownloadUrl(row.imageKey)).downloadUrl;
+          } catch {
+            downloadUrl = null;
+          }
+        }
+        const meta = (row.metaJson && typeof row.metaJson === 'object' && !Array.isArray(row.metaJson)
+          ? (row.metaJson as Record<string, unknown>)
+          : {}) as Record<string, unknown>;
+        return {
+          ...row,
+          downloadUrl,
+          metaJson: {
+            ...meta,
+            ...(downloadUrl ? { publicUrl: downloadUrl, url: downloadUrl } : {}),
+          },
+        };
+      }),
+    );
   }
 
   async get(actor: AuthPrincipal, id: string) {

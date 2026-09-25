@@ -85,3 +85,5 @@ artifacts/staging/
 
 apps/*-mobile/.env.staging
 
+
+artifacts/staging/golive-secrets.local.env

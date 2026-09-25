@@ -300,12 +300,17 @@ export function PlotCanvas({
         </g>
       </svg>
 
-      {!hasImage && (
-        <div className="plot-canvas-empty px-6">
-          <p className="font-display text-sm font-semibold text-foreground">No master plan underlay</p>
-          <p className="pt-1 text-xs">Grid fallback — polygons still map in 0–100 viewBox with xMidYMid meet hit-testing.</p>
-        </div>
-      )}
+      {(() => {
+        const hasMapped = visible.some((p) => pointsOf(p));
+        // Reject sparse empty-state overlay when layout geometry already exists.
+        if (hasImage || hasMapped) return null;
+        return (
+          <div className="plot-canvas-empty px-6">
+            <p className="font-display text-sm font-semibold text-foreground">No master plan underlay</p>
+            <p className="pt-1 text-xs">Grid fallback — polygons still map in 0–100 viewBox with xMidYMid meet hit-testing.</p>
+          </div>
+        );
+      })()}
 
       <div className="plot-canvas-legend" onPointerDown={(e) => e.stopPropagation()}>
         <p className="k">Legend</p>

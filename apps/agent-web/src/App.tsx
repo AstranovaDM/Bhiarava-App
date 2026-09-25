@@ -19,6 +19,7 @@ import {
 import { AppShell, LoadingState, type NavGroup, type NavItem } from '@bhairava/ui-web';
 import type { PublicUser } from '@bhairava/api-client';
 import { api, tokens } from './api';
+import { appPath, LOGO_SRC } from './basePath';
 import { SessionContext, UNREAD_CAP, type AgentSession } from './session';
 import { LoginPage } from './pages/Login';
 import { HomePage } from './pages/Home';
@@ -85,7 +86,7 @@ async function signOut() {
     await api.auth.logout();
   } catch {}
   await tokens.clear();
-  location.href = '/login';
+  location.href = appPath('/login');
 }
 
 /** Resolves the session before any authenticated screen renders. */
@@ -162,13 +163,16 @@ function AgentShell() {
         primaryAction={QUICK_ACTIONS[0]}
         brandTitle="Bhairava"
         brandSubtitle="Agent portal"
+        logoSrc={LOGO_SRC}
         user={user ? { name: user.displayName, email: user.email ?? undefined } : null}
         onSignOut={() => void signOut()}
         notificationCount={unreadCount ?? 0}
         notificationsTo="/notifications"
         hideFabOn={(pathname) => FORM_ROUTES.has(pathname)}
       >
-        <Outlet />
+        <div className="mx-auto w-full max-w-6xl pb-16">
+          <Outlet />
+        </div>
       </AppShell>
     </SessionContext.Provider>
   );
