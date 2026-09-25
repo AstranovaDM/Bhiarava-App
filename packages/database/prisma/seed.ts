@@ -18,6 +18,20 @@ import * as argon2 from 'argon2';
 const prisma = new PrismaClient();
 const DEMO_PASSWORD = 'Demo@12345';
 
+async function assertSeedAllowed() {
+  const nodeEnv = process.env.NODE_ENV || 'development';
+  const allow = (process.env.ALLOW_DEMO_SEED || '').toLowerCase();
+  if (nodeEnv === 'production') {
+    console.error('Refusing demo seed in production. Use founder bootstrap instead.');
+    process.exit(2);
+  }
+  if (allow === 'never' || allow === 'false' || allow === '0') {
+    console.error('ALLOW_DEMO_SEED forbids seeding.');
+    process.exit(2);
+  }
+}
+
+
 async function ensureCustomer(params: {
   organizationId: string;
   email: string;
@@ -54,6 +68,7 @@ async function ensureCustomer(params: {
 }
 
 async function main() {
+  await assertSeedAllowed();
   const org = await prisma.organization.upsert({
     where: { code: 'BHAIRAVA-DEMO' },
     update: { name: 'Bhairava Demo Org' },

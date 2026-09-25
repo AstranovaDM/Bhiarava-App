@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, Patch, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Header, Param, Patch, Post, Put, Query, Res, UseGuards } from '@nestjs/common';
+import type { Response } from 'express';
 import { IsArray, IsBoolean, IsObject, IsOptional, IsString, MinLength, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { OpsService } from './ops.service';
@@ -66,6 +67,21 @@ export class OpsController {
   receipt(@CurrentUser() user: AuthPrincipal, @Param('id') id: string) {
     return this.ops.receipt(user, id);
   }
+
+  @Get('receipts/:id/pdf')
+  @RequirePermissions('finance.view')
+  @Header('Content-Type', 'application/pdf')
+  async receiptPdf(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id') id: string,
+    @Res() res: Response,
+  ) {
+    const { buffer, filename } = await this.ops.receiptPdf(user, id);
+    res.setHeader('Content-Disposition', 'attachment; filename="' + filename + '"');
+    res.setHeader('Cache-Control', 'no-store');
+    res.send(buffer);
+  }
+
 
   @Get('commissions')
   @RequirePermissions('finance.view')

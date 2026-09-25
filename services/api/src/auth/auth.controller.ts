@@ -12,10 +12,16 @@ export class AuthController {
 
   private setRefreshCookie(res: Response, refreshToken: string, expiresAt: string) {
     const secure = process.env.COOKIE_SECURE === 'true';
+    const sameSiteRaw = (process.env.COOKIE_SAMESITE || 'lax').toLowerCase();
+    const sameSite = (['lax', 'strict', 'none'].includes(sameSiteRaw)
+      ? sameSiteRaw
+      : 'lax') as 'lax' | 'strict' | 'none';
+    // SameSite=None requires Secure
+    const effectiveSameSite = sameSite === 'none' && !secure ? 'lax' : sameSite;
     res.cookie('bhairava_refresh', refreshToken, {
       httpOnly: true,
-      secure,
-      sameSite: 'lax',
+      secure: secure || effectiveSameSite === 'none',
+      sameSite: effectiveSameSite,
       path: '/api/auth',
       expires: new Date(expiresAt),
     });

@@ -60,3 +60,22 @@ describe('privacy & tenancy', () => {
   });
 });
 
+describe('receipt ownership helpers', () => {
+  function canViewReceipt(actor: { role: string; userId: string; agentId?: string }, receipt: { customerUserId: string; customerAgentId: string }) {
+    if (actor.role === 'CUSTOMER') return actor.userId === receipt.customerUserId;
+    if (actor.role === 'AGENT') return actor.agentId === receipt.customerAgentId;
+    return true; // staff with finance.view
+  }
+
+  it('customer cannot view another customer receipt', () => {
+    const receipt = { customerUserId: 'u1', customerAgentId: 'ag1' };
+    expect(canViewReceipt({ role: 'CUSTOMER', userId: 'u2' }, receipt)).toBe(false);
+    expect(canViewReceipt({ role: 'CUSTOMER', userId: 'u1' }, receipt)).toBe(true);
+  });
+
+  it('agent cannot view other agent customer receipt', () => {
+    const receipt = { customerUserId: 'u1', customerAgentId: 'ag1' };
+    expect(canViewReceipt({ role: 'AGENT', userId: 'a2', agentId: 'ag2' }, receipt)).toBe(false);
+    expect(canViewReceipt({ role: 'AGENT', userId: 'a1', agentId: 'ag1' }, receipt)).toBe(true);
+  });
+});

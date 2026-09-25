@@ -52,3 +52,17 @@ See `scripts/backup/minio_notes.md`. Prefer `mc mirror` or cloud-native bucket r
 - [ ] Founder/admin login works
 - [ ] Spot-check reservation/booking rows
 - [ ] MinIO objects reachable for a sample document key
+
+
+## Operational schedule (production)
+
+| Item | Policy |
+|------|--------|
+| Full Postgres dump | Daily (off-peak IST) via `scripts/backup/pg_dump.*` or managed snapshot |
+| Retention | 30 daily + 12 monthly (adjust per compliance) |
+| Pre-migration | Mandatory dump before `db:migrate:deploy` |
+| S3 / documents | Bucket versioning + cross-region replication preferred; see `scripts/backup/minio_notes.md` |
+| Restore drill | Quarterly: restore to isolated DB, run migrate status, hit `/api/ready`, spot-check receipt PDF + auth |
+| Verification | Compare row counts for payments/receipts/bookings; open one receipt PDF |
+
+Never run restore against production without change control and Founder approval.

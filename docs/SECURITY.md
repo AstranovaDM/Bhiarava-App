@@ -35,3 +35,19 @@ Append-only. API rejects POST/PATCH/PUT/DELETE on `/api/audit*`.
 
 - Never commit real secrets
 - Production env validation fails on `change-me` JWT secrets and `COOKIE_SECURE!=true`
+
+
+## Security headers (API)
+
+Applied in `services/api/src/main.ts`:
+
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: DENY`
+- `Referrer-Policy: no-referrer`
+- `Content-Security-Policy` (API default-src none)
+- `Strict-Transport-Security` in production
+- HTTPS-only cleartext rejection when `x-forwarded-proto` present in production
+- CORS allowlist via `CORS_ORIGINS` (required in production)
+- JSON body limit (`JSON_BODY_LIMIT`, default 1mb)
+- Global throttling (`THROTTLE_*`)
+- Cookies: HttpOnly, Secure when `COOKIE_SECURE=true`, SameSite via `COOKIE_SAMESITE`

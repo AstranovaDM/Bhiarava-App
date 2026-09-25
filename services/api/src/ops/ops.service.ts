@@ -11,6 +11,7 @@ import { PlotsService } from '../plots/plots.service';
 import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import type { AuthPrincipal } from '../auth/auth.types';
+import { buildReceiptPdf, amountInWordsInr } from './receipt-pdf';
 
 @Injectable()
 export class OpsService {
@@ -41,8 +42,20 @@ export class OpsService {
   }
 
   async receipts(actor: AuthPrincipal) {
+    const where: any = { organizationId: actor.organizationId };
+    if (actor.roleCode === 'CUSTOMER') {
+      where.booking = { customer: { userId: actor.userId } };
+    } else if (actor.roleCode === 'AGENT') {
+      const agent = await this.prisma.agentProfile.findFirst({
+        where: { userId: actor.userId, organizationId: actor.organizationId },
+      });
+      if (!agent) return [];
+      if (!agent.allAgentsAccess) {
+        where.booking = { customer: { agentId: agent.id } };
+      }
+    }
     const rows = await this.prisma.receipt.findMany({
-      where: { organizationId: actor.organizationId },
+      where,
       orderBy: { issuedAt: 'desc' },
       take: 200,
       include: {
@@ -84,6 +97,18 @@ export class OpsService {
       });
       if (!mine || row.booking.customerId !== mine.id) throw new NotFoundException('Receipt not found');
     }
+    if (actor.roleCode === 'AGENT') {
+      const agent = await this.prisma.agentProfile.findFirst({
+        where: { userId: actor.userId, organizationId: actor.organizationId },
+      });
+      if (!agent) throw new NotFoundException('Receipt not found');
+      if (!agent.allAgentsAccess) {
+        const cust = await this.prisma.customer.findFirst({
+          where: { id: row.booking.customerId, organizationId: actor.organizationId },
+        });
+        if (!cust || cust.agentId !== agent.id) throw new NotFoundException('Receipt not found');
+      }
+    }
     let generatedBy: { id: string; displayName: string | null; email: string | null } | null = null;
     if (row.payment.recordedByUserId) {
       const u = await this.prisma.user.findUnique({
@@ -92,15 +117,17 @@ export class OpsService {
       });
       generatedBy = u;
     }
+    const amountPaiseStr = row.payment.amountPaise.toString();
     return {
       id: row.id,
       receiptNumber: row.receiptNumber,
       issuedAt: row.issuedAt,
       pdfKey: row.pdfKey,
       metaJson: row.metaJson,
+      amountInWords: amountInWordsInr(amountPaiseStr),
       payment: {
         id: row.payment.id,
-        amountPaise: row.payment.amountPaise.toString(),
+        amountPaise: amountPaiseStr,
         method: row.payment.method,
         paidAt: row.payment.paidAt,
         txnRef: row.payment.txnRef,
@@ -120,6 +147,41 @@ export class OpsService {
       project: row.booking.project,
       generatedBy,
     };
+  }
+
+
+  async receiptPdf(actor: AuthPrincipal, id: string): Promise<{ buffer: Buffer; filename: string; receiptNumber: string }> {
+    const detail = await this.receipt(actor, id);
+    if (detail.payment && (detail as any).payment?.voidedAt) {
+      // voided payments still printable historically if record exists; amount from persisted row only
+    }
+    const org = await this.prisma.organization.findUnique({
+      where: { id: actor.organizationId },
+      select: { name: true },
+    });
+    const authorizedBy =
+      detail.generatedBy?.displayName ||
+      detail.generatedBy?.email ||
+      null;
+    const buffer = await buildReceiptPdf({
+      brandName: org?.name || 'Bhairava',
+      receiptNumber: detail.receiptNumber,
+      customerName: detail.customer?.name || 'Customer',
+      customerPhone: detail.customer?.phone,
+      customerEmail: detail.customer?.email,
+      projectName: detail.project?.name || 'Project',
+      projectCode: detail.project?.code,
+      plotNumber: detail.plot?.number ?? null,
+      bookingId: detail.booking.id,
+      amountPaise: detail.payment.amountPaise,
+      paymentMethod: detail.payment.method,
+      txnRef: detail.payment.txnRef,
+      paidAt: detail.payment.paidAt,
+      generatedAt: new Date(),
+      authorizedBy,
+    });
+    const filename = detail.receiptNumber.replace(/[^A-Za-z0-9_-]/g, '_') + '.pdf';
+    return { buffer, filename, receiptNumber: detail.receiptNumber };
   }
 
   async commissions(actor: AuthPrincipal) {

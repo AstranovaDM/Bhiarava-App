@@ -21,6 +21,13 @@ export type EnvSchema = {
   S3_REGION?: string;
   THROTTLE_TTL_MS: number;
   THROTTLE_LIMIT: number;
+  CORS_ORIGINS?: string;
+  ADMIN_WEB_URL?: string;
+  AGENT_WEB_URL?: string;
+  CUSTOMER_WEB_URL?: string;
+  API_PUBLIC_URL?: string;
+  MOBILE_API_URL?: string;
+  MAX_UPLOAD_BYTES?: number;
 };
 
 export type EnvIssue = { key: string; message: string };
@@ -64,6 +71,16 @@ export function validateEnv(env: NodeJS.ProcessEnv = process.env): {
     if (env.COOKIE_SECURE !== 'true') {
       issues.push({ key: 'COOKIE_SECURE', message: 'must be true in production' });
     }
+    const cors = (env.CORS_ORIGINS || '').trim();
+    if (!cors || cors === '*') {
+      issues.push({ key: 'CORS_ORIGINS', message: 'production requires explicit comma-separated allowlist' });
+    }
+    if (/minioadmin|Demo@12345/i.test(JSON.stringify({
+      s3: env.S3_ACCESS_KEY || '',
+      s3s: env.S3_SECRET_KEY || '',
+    }))) {
+      issues.push({ key: 'S3_*', message: 'production must not use MinIO demo credentials' });
+    }
   }
 
   const config: EnvSchema = {
@@ -84,6 +101,13 @@ export function validateEnv(env: NodeJS.ProcessEnv = process.env): {
     S3_REGION: env.S3_REGION || 'us-east-1',
     THROTTLE_TTL_MS: Number(env.THROTTLE_TTL_MS || 60_000),
     THROTTLE_LIMIT: Number(env.THROTTLE_LIMIT || 60),
+    CORS_ORIGINS: env.CORS_ORIGINS,
+    ADMIN_WEB_URL: env.ADMIN_WEB_URL,
+    AGENT_WEB_URL: env.AGENT_WEB_URL,
+    CUSTOMER_WEB_URL: env.CUSTOMER_WEB_URL,
+    API_PUBLIC_URL: env.API_PUBLIC_URL,
+    MOBILE_API_URL: env.MOBILE_API_URL,
+    MAX_UPLOAD_BYTES: Number(env.MAX_UPLOAD_BYTES || 10_485_760),
   };
 
   return { ok: issues.length === 0, config, issues };
