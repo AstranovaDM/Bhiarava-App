@@ -73,6 +73,7 @@ export function ResourceTable({
   actions,
   emptyMessage = 'No records from the API yet.',
   testId,
+  banner,
 }: {
   title: string;
   eyebrow?: string;
@@ -86,6 +87,8 @@ export function ResourceTable({
   actions?: ReactNode;
   emptyMessage?: string;
   testId?: string;
+  /** Rendered between the page header and the table. */
+  banner?: ReactNode;
 }) {
   const { rows, err, loading, reload } = useAsyncList(loader);
   const [view, setView] = useState('All');
@@ -113,6 +116,7 @@ export function ResourceTable({
   return (
     <>
       <PageHeader eyebrow={eyebrow} title={title} description={description} actions={actions} />
+      {banner}
       {err ? (
         <ErrorState title={`Couldn't load ${title.toLowerCase()}`} error={err} onRetry={reload} />
       ) : loading ? (

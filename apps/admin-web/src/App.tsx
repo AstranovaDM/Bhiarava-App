@@ -10,6 +10,14 @@ import { LayoutsPage } from './pages/Layouts';
 import { CustomerDetailPage, CustomersPage } from './pages/Customers';
 import { CustomerOnboardingPage, LeadConversionPage } from './pages/Onboarding';
 import {
+  AgentOnboardingPage,
+  BookingOnboardingPage,
+  PlotOnboardingPage,
+  ProjectOnboardingPage,
+  ReservationOnboardingPage,
+  VisitOnboardingPage,
+} from './pages/OnboardingWizards';
+import {
   AgentsPage,
   BookingsPage,
   CollectionsPage,
@@ -22,6 +30,7 @@ import {
   SchedulePage,
   VisitsPage,
 } from './pages/Lists';
+import { AgentDetailPage, BookingDetailPage, PaymentDetailPage } from './pages/Details';
 import { ReceiptDetailPage, ReceiptsListPage } from './pages/Receipts';
 import { DocumentsPage } from './pages/Documents';
 import { NotificationsPage } from './pages/Notifications';
@@ -39,12 +48,22 @@ const shellRoutes: Array<[path: string, element: ReactNode]> = [
   ['/customers/onboarding', <CustomerOnboardingPage />],
   ['/customers/:customerId', <CustomerDetailPage />],
   ['/conversion', <LeadConversionPage />],
+  ['/onboarding/project', <ProjectOnboardingPage />],
+  ['/onboarding/plot', <PlotOnboardingPage />],
+  ['/onboarding/customer', <CustomerOnboardingPage />],
+  ['/onboarding/agent', <AgentOnboardingPage />],
+  ['/onboarding/visit', <VisitOnboardingPage />],
+  ['/onboarding/reservation', <ReservationOnboardingPage />],
+  ['/onboarding/booking', <BookingOnboardingPage />],
   ['/agents', <AgentsPage />],
+  ['/agents/:agentId', <AgentDetailPage />],
   ['/leads', <LeadsPage />],
   ['/visits', <VisitsPage />],
   ['/reservations', <ReservationsPage />],
   ['/bookings', <BookingsPage />],
+  ['/bookings/:bookingId', <BookingDetailPage />],
   ['/payments', <PaymentsPage />],
+  ['/payments/:paymentId', <PaymentDetailPage />],
   ['/collections', <CollectionsPage />],
   ['/schedule', <SchedulePage />],
   ['/receipts', <ReceiptsListPage />],

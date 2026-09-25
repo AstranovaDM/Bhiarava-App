@@ -251,6 +251,7 @@ export function CustomerDetailPage() {
           ) : (
             <DataTable<Row>
               rows={withIds(bookings.rows)}
+              linkTo={(b) => `/bookings/${b.id}`}
               emptyMessage="No bookings for this customer yet."
               columns={[
                 { key: 'id', header: 'Booking', cell: (b) => <Mono>{shortId(b.id)}</Mono> },

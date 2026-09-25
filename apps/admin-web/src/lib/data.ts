@@ -68,6 +68,20 @@ export function formatPaise(paise: unknown): string {
   return n.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
 }
 
+/** Paise strings from the API (BigInt-serialized) → `bigint`; blanks and garbage → `0n`. */
+export function toPaise(v: unknown): bigint {
+  if (v === null || v === undefined || v === '') return 0n;
+  try {
+    return BigInt(String(v));
+  } catch {
+    return 0n;
+  }
+}
+
+export function sumPaise(rows: AnyRow[], key: string): bigint {
+  return rows.reduce((acc, r) => acc + toPaise(r[key]), 0n);
+}
+
 /** For rupee-denominated Decimal columns (e.g. `plot.totalPrice`). */
 export function formatRupees(v: unknown): string {
   if (v === null || v === undefined || v === '') return DASH;

@@ -74,7 +74,7 @@ export function CustomerOnboardingPage() {
   const set = (patch: Partial<typeof form>) => setForm((f) => ({ ...f, ...patch }));
 
   useEffect(() => {
-    api.agents.list().then(setAgents).catch(() => setAgents([]));
+    api.agents.list().then((r) => setAgents(Array.isArray(r) ? r : [])).catch(() => setAgents([]));
     api.projects.list().then((r) => setProjects(Array.isArray(r) ? r : [])).catch(() => setProjects([]));
   }, []);
 

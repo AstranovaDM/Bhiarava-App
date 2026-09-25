@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import {
+  Activity,
   ArrowLeft,
   ArrowUpRight,
   Boxes,
@@ -22,6 +23,8 @@ import {
   TrendingUp,
   Trees,
   Upload,
+  Users,
+  Wallet,
 } from 'lucide-react';
 import {
   Btn,
@@ -57,8 +60,11 @@ import {
   Notice,
   StatusChip,
 } from '../components/common';
-import { DASH, display, errMsg, formatDate, formatRupees, humanize, shortId, useAsyncList, withIds, type AnyRow } from '../lib/data';
+import { DASH, display, errMsg, formatDate, formatRupees, humanize, useAsyncList, withIds, type AnyRow } from '../lib/data';
 import { DocumentsPage } from './Documents';
+import { ComingSoonPanel } from './project-workspace/ComingSoonPanel';
+import { FinanceTab } from './project-workspace/FinanceTab';
+import { SalesTab } from './project-workspace/SalesTab';
 
 type Row = AnyRow & { id: string | number };
 
@@ -76,7 +82,10 @@ const TAB_KEYS = [
   'visibility',
   'layout',
   'sales',
+  'finance',
   'documents',
+  'team',
+  'activity',
 ] as const;
 type TabKey = (typeof TAB_KEYS)[number];
 
@@ -120,6 +129,10 @@ export function ProjectWorkspacePage() {
   const [msg, setMsg] = useState('');
   const plots = useAsyncList(
     () => (projectId ? (api.plots.listByProject(projectId) as Promise<AnyRow[]>) : Promise.resolve([])),
+    [projectId],
+  );
+  const bookings = useAsyncList(
+    () => (projectId ? (api.bookings.list({ projectId }) as Promise<AnyRow[]>) : Promise.resolve([])),
     [projectId],
   );
 
@@ -358,8 +371,11 @@ export function ProjectWorkspacePage() {
     { key: 'media', label: 'Media', icon: ImageIcon },
     { key: 'visibility', label: 'Visibility', icon: Eye },
     { key: 'layout', label: 'Layout & plots', icon: MapIcon, count: layouts.length },
-    { key: 'sales', label: 'Sales', icon: TrendingUp },
+    { key: 'sales', label: 'Sales', icon: TrendingUp, ...(bookings.loading || bookings.err ? {} : { count: bookings.rows.length }) },
+    { key: 'finance', label: 'Finance', icon: Wallet },
     { key: 'documents', label: 'Documents', icon: FileText },
+    { key: 'team', label: 'Team', icon: Users },
+    { key: 'activity', label: 'Activity', icon: Activity },
   ];
 
   if (loadErr) {
@@ -802,68 +818,31 @@ export function ProjectWorkspacePage() {
           </>
         )}
 
-        {tab === 'sales' && projectId && <SalesTab projectId={projectId} />}
+        {tab === 'sales' && projectId && <SalesTab projectId={projectId} bookings={bookings} />}
+
+        {tab === 'finance' && projectId && <FinanceTab projectId={projectId} bookings={bookings} />}
 
         {tab === 'documents' && projectId && <DocumentsPage projectId={projectId} />}
-      </div>
-    </>
-  );
-}
 
-function SalesTab({ projectId }: { projectId: string }) {
-  const leads = useAsyncList(() => api.leads.list(projectId) as Promise<AnyRow[]>, [projectId]);
-  const bookings = useAsyncList(() => api.bookings.list({ projectId }) as Promise<AnyRow[]>, [projectId]);
-  const reservations = useAsyncList(() => api.reservations.list({ projectId }) as Promise<AnyRow[]>, [projectId]);
-  const count = (l: { loading: boolean; err: string; rows: AnyRow[] }) => (l.loading ? DASH : l.err ? '!' : l.rows.length);
+        {tab === 'team' && (
+          <ComingSoonPanel
+            icon={Users}
+            title="Team"
+            description="Team permissions for this project ship with workspace collaboration. Organisation members and roles are managed in Settings today."
+            action={<LinkBtn to="/settings/users" variant="tonal">Organisation members <ArrowUpRight className="h-4 w-4" /></LinkBtn>}
+          />
+        )}
 
-  const links = [
-    { to: '/leads', label: 'Leads', hint: 'Qualify and assign' },
-    { to: '/conversion', label: 'Conversion chain', hint: 'Lead → visit → reserve → book' },
-    { to: `/projects/${projectId}/plots`, label: 'Plots', hint: 'Reserve or book inventory' },
-    { to: '/bookings', label: 'Bookings', hint: 'Agreements and schedules' },
-  ];
-
-  return (
-    <>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-        <Metric accent label="Leads" value={count(leads)} />
-        <Metric label="Active reservations" value={count({ ...reservations, rows: reservations.rows.filter((r) => String(r.state).toUpperCase() === 'ACTIVE') })} />
-        <Metric label="Bookings" value={count(bookings)} />
-      </div>
-      <Panel>
-        <SectionTitle>Sales shortcuts</SectionTitle>
-        <ul className="grid gap-2 sm:grid-cols-2">
-          {links.map((l) => (
-            <li key={l.to}>
-              <Link to={l.to} className="lift flex items-center justify-between gap-3 rounded-xl bg-surface-low p-3.5 transition-colors hover:bg-surface-c">
-                <span className="min-w-0">
-                  <span className="block text-sm font-medium">{l.label}</span>
-                  <Muted>{l.hint}</Muted>
-                </span>
-                <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </Panel>
-      <div className="min-w-0">
-        <SectionTitle aside={`${bookings.rows.length} total`}>Recent bookings</SectionTitle>
-        {bookings.err ? (
-          <ErrorState compact title="Couldn't load bookings" error={bookings.err} onRetry={bookings.reload} />
-        ) : (
-          <DataTable<Row>
-            rows={withIds(bookings.rows.slice(0, 10))}
-            emptyMessage="No bookings for this project yet."
-            columns={[
-              { key: 'id', header: 'Booking', cell: (b) => <Mono>{shortId(b.id)}</Mono> },
-              { key: 'state', header: 'State', cell: (b) => <StatusChip value={b.state} /> },
-              { key: 'plot', header: 'Plot', cell: (b) => <Mono>{display(b.plot?.number ?? shortId(b.plotId))}</Mono> },
-              { key: 'customer', header: 'Customer', cell: (b) => <Muted>{display(b.customer?.name ?? shortId(b.customerId))}</Muted> },
-              { key: 'created', header: 'Created', cell: (b) => <Mono>{formatDate(b.createdAt)}</Mono> },
-            ]}
+        {tab === 'activity' && (
+          <ComingSoonPanel
+            icon={Activity}
+            title="Activity"
+            description="A project-scoped activity feed ships with audit streaming. The organisation-wide audit log is available in Settings."
+            action={<LinkBtn to="/settings/audit" variant="tonal">Open audit log <ArrowUpRight className="h-4 w-4" /></LinkBtn>}
           />
         )}
       </div>
     </>
   );
 }
+

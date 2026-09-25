@@ -212,6 +212,15 @@ export function createApiClient(opts: ApiClientOptions) {
     },
     plots: {
       listByProject: (projectId: string) => request<PlotSummary[]>('GET', '/api/plots/project/' + projectId),
+      create: (body: {
+        projectId: string;
+        number: string;
+        areaSqYd: number;
+        ratePerSqYd?: number;
+        totalPrice?: number;
+        facing?: string;
+        notes?: string;
+      }) => request<PlotSummary>('POST', '/api/plots', body),
       setPolygon: (plotId: string, body: { points: unknown; replaceExisting?: boolean; layoutId?: string }) =>
         request<PlotSummary>('POST', '/api/plots/' + plotId + '/polygon', body),
       clearPolygon: (plotId: string) => request<PlotSummary>('DELETE', '/api/plots/' + plotId + '/polygon'),
@@ -329,6 +338,10 @@ export function createApiClient(opts: ApiClientOptions) {
           'GET',
           '/api/payment-schedules' + (bookingId ? '?bookingId=' + bookingId : ''),
         ),
+      create: (body: {
+        bookingId: string;
+        items: Array<{ name: string; dueDate: string; amountDuePaise: string; installmentNumber?: number }>;
+      }) => request<Array<Record<string, unknown>>>('POST', '/api/payment-schedules', body),
     },
     registrations: {
       list: () => request<Array<Record<string, unknown>>>('GET', '/api/registrations'),

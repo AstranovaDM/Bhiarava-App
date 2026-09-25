@@ -16,7 +16,6 @@ import {
   Grid3x3,
   LayoutDashboard,
   Map,
-  PenTool,
   PieChart,
   Receipt,
   Repeat,
@@ -105,12 +104,23 @@ export const adminNavGroups: NavGroup[] = [
 ];
 
 const quickActions: NavItem[] = [
-  { to: '/projects?new=1', label: 'New project', icon: FolderPlus },
-  { to: '/customers/onboarding', label: 'New customer', icon: UserPlus },
+  { to: '/onboarding/project', label: 'New project', icon: FolderPlus },
+  { to: '/onboarding/plot', label: 'New plot', icon: Grid3x3 },
+  { to: '/onboarding/customer', label: 'New customer', icon: UserPlus },
+  { to: '/onboarding/agent', label: 'New agent', icon: BadgePlus },
+  { to: '/onboarding/visit', label: 'Site visit', icon: CalendarClock },
+  { to: '/onboarding/reservation', label: 'Reservation', icon: Clock },
+  { to: '/onboarding/booking', label: 'Booking', icon: Receipt },
   { to: '/conversion', label: 'Lead conversion', icon: Workflow },
-  { to: '/visits', label: 'Site visit', icon: CalendarClock },
-  { to: '/plots', label: 'Reservation', icon: Clock },
-  { to: '/layouts', label: 'Layout editor', icon: PenTool },
+];
+
+const fabActions: NavItem[] = [
+  { to: '/onboarding/booking', label: 'New booking', icon: Receipt },
+  { to: '/onboarding/customer', label: 'New customer', icon: UserPlus },
+  { to: '/onboarding/visit', label: 'Site visit', icon: CalendarClock },
+  { to: '/onboarding/reservation', label: 'New reservation', icon: Clock },
+  { to: '/onboarding/project', label: 'New project', icon: FolderPlus },
+  { to: '/onboarding/agent', label: 'New agent', icon: BadgePlus },
 ];
 
 const tabItems: NavItem[] = [
@@ -163,13 +173,14 @@ function AuthedShell({ children }: { children: ReactNode }) {
     <AppShell
       navGroups={adminNavGroups}
       quickActions={quickActions}
+      fabActions={fabActions}
       tabItems={tabItems}
       brandTitle="Bhairava"
       brandSubtitle="Admin · Land Sales OS"
       user={user}
       notificationsTo="/notifications"
       notificationCount={unread}
-      primaryAction={{ to: '/customers/onboarding', label: 'New customer', icon: UserPlus }}
+      primaryAction={{ to: '/onboarding/customer', label: 'New customer', icon: UserPlus }}
       onSignOut={() => void signOut()}
       hideFabOn={hideFabOn}
     >

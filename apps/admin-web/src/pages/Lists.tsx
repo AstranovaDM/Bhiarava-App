@@ -1,4 +1,4 @@
-import { CalendarPlus, Workflow } from 'lucide-react';
+import { BadgePlus, CalendarPlus, Clock, Receipt, Workflow } from 'lucide-react';
 import { LinkBtn } from '@bhairava/ui-web';
 import { api } from '../api';
 import { Muted, StatusChip } from '../components/common';
@@ -44,7 +44,7 @@ export function VisitsPage() {
       loader={() => api.visits.list() as Promise<AnyRow[]>}
       statusKey="status"
       actions={
-        <LinkBtn to="/conversion" variant="primary">
+        <LinkBtn to="/onboarding/visit" variant="primary">
           <CalendarPlus className="h-4 w-4" /> Schedule visit
         </LinkBtn>
       }
@@ -66,6 +66,11 @@ export function ReservationsPage() {
       description="Time-boxed plot holds. Expired holds release inventory automatically."
       loader={() => api.reservations.list() as Promise<AnyRow[]>}
       statusKey="state"
+      actions={
+        <LinkBtn to="/onboarding/reservation" variant="primary">
+          <Clock className="h-4 w-4" /> New reservation
+        </LinkBtn>
+      }
       columns={[
         { key: 'id', label: 'Reservation', kind: 'id' },
         { key: 'state', label: 'State', kind: 'status' },
@@ -85,6 +90,12 @@ export function BookingsPage() {
       description="Confirmed plot bookings and their agreement values."
       loader={() => api.bookings.list() as Promise<AnyRow[]>}
       statusKey="state"
+      linkTo={(r) => `/bookings/${r.id}`}
+      actions={
+        <LinkBtn to="/onboarding/booking" variant="primary">
+          <Receipt className="h-4 w-4" /> New booking
+        </LinkBtn>
+      }
       columns={[
         { key: 'id', label: 'Booking', kind: 'id' },
         { key: 'state', label: 'State', kind: 'status' },
@@ -104,6 +115,7 @@ export function PaymentsPage() {
       title="Payments"
       description="Recorded payments. Voided payments stay on the ledger and are excluded from totals."
       loader={() => api.payments.list() as Promise<AnyRow[]>}
+      linkTo={(r) => `/payments/${r.id}`}
       columns={[
         { key: 'paidAt', label: 'Paid', kind: 'date' },
         { key: 'amountPaise', label: 'Amount', kind: 'money' },
@@ -224,6 +236,12 @@ export function AgentsPage() {
       description="Channel partners and in-house sales agents."
       loader={() => api.agents.list()}
       statusKey="status"
+      linkTo={(r) => `/agents/${r.id}`}
+      actions={
+        <LinkBtn to="/onboarding/agent" variant="primary">
+          <BadgePlus className="h-4 w-4" /> Onboard agent
+        </LinkBtn>
+      }
       columns={[
         { key: 'code', label: 'Code', kind: 'mono' },
         { key: 'name', label: 'Agent', kind: 'strong' },
