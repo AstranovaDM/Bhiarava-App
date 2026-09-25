@@ -46,7 +46,7 @@
     "dev:prod-stack": "npx concurrently -n api,admin,agent,customer -c blue,cyan,green,magenta \"npm run dev:api\" \"npm run dev:admin-web\" \"npm run dev:agent-web\" \"npm run dev:customer-web\"",
     "dev:legacy-main": "npm run dev --prefix \"MAIN app\"",
     "db:seed:staging": "npm run seed -w @bhairava/database",
-    "test:privacy": "npm run test -w @bhairava/api -- --testPathPattern=privacy"
+    "test:privacy": "npm run test -w @bhairava/api -- --testPathPatterns=privacy"
   },
   "engines": {
     "node": ">=20"

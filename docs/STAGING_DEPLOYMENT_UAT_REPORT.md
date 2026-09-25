@@ -1,23 +1,23 @@
-# BHAIRAVA Staging Deployment + UAT Report
+﻿# BHAIRAVA Staging Deployment + UAT Report
 
-**Date (IST):** 2026-09-25 15:43:49 Asia/Calcutta (original local UAT)  
-**Follow-up (cloud agent):** 2026-09-25 — BigInt serialization + agent booking attribution fixes  
-**Branch tip:** `bad50c6` (`feat/production-platform`) — BigInt JSON + agent booking attribution fixes  
-**PR:** https://github.com/BadhulaVijaybhaskar/bhairava-App/pull/10 — **OPEN / NOT MERGED**  
+**Date (IST):** 2026-09-25 15:43:49 Asia/Calcutta (original local UAT)
+**Follow-up (local staging re-verify):** 2026-09-25 16:40 Asia/Calcutta (IST) â€” BigInt + agent attribution confirmed on isolated stack @ `2edeb21`; harness + report push follows
+**Branch tip:** `2edeb21` (`feat/production-platform`) â€” BigInt JSON + agent booking attribution; report/harness commit updates tip after push
+**PR:** https://github.com/BadhulaVijaybhaskar/bhairava-App/pull/10 â€” **OPEN / NOT MERGED**  
 **RC tag:** `bhairava-production-rc1` @ `e29ec71`  
-**Machine:** Windows (Vijay) — local isolated staging; cloud agent verified unit/API tests only  
+**Machine:** Windows (Vijay) â€” local isolated staging; cloud agent verified unit/API tests only  
 
 ## Executive verdict
 
 | Gate | Result |
 |------|--------|
-| Staging stack green for UAT (local isolated) | **YES** (prior run) |
-| Full checklist executed | **YES** (47/47 automated UAT steps pass after signed-URL + resale retries) |
-| Documents list BigInt 500 (code fix) | **FIXED IN CODE** — staging re-verify still required on isolated stack |
-| Agent booking attribution (code fix) | **FIXED IN CODE** — staging re-verify still required |
+| Staging stack green for UAT (local isolated) | **YES** (restarted API on tip `2edeb21`; health/ready green) |
+| Full checklist executed | **YES** â€” staging UAT **54/54** pass (was 47/47; +documents list roles + agent attribution steps) |
+| Documents list BigInt 500 (code fix) | **CONFIRMED FIXED ON STAGING** â€” `GET /api/documents` = 200; `sizeBytes` decimal strings |
+| Agent booking attribution (code fix) | **CONFIRMED ON STAGING** â€” Agent1 sees own (nâ‰¥1, PII); Agent2 n=0 / cross-GET 404 |
 | Public DNS / managed hosting | **BLOCKED BY EXTERNAL CREDENTIAL / DNS** |
-| Production promotion from this staging | **CONDITIONAL NO** — technically healthy as *local* staging; **not** approved as internet-facing staging, and PR must stay unmerged until explicit production authorization |
-| Staging promotion readiness (local UAT evidence) | **CONDITIONAL YES (local-only)** — re-run UAT after pulling tip with BigInt/attribution fixes |
+| Production promotion from this staging | **CONDITIONAL NO** â€” technically healthy as *local* staging; **not** approved as internet-facing staging, and PR must stay unmerged until explicit production authorization |
+| Staging promotion readiness (local UAT evidence) | **CONDITIONAL YES (local-only)** â€” local gates green on tip with BigInt/attribution fixes; external DNS/TLS/creds still block internet staging |
 
 **Do not merge PR #10. Do not deploy production. Do not publish stores.**
 
@@ -34,14 +34,14 @@
 | Redis | `127.0.0.1:16379` (password-protected) | `:6379` |
 | MinIO | `127.0.0.1:19000` API / `:19001` console / bucket `bhairava-staging` | `:9000/:9001` / `bhairava` |
 | API | `http://127.0.0.1:14000/api` (host Node process + staging env) | existing host/dev ports |
-| Worker | host Node process → staging Redis/DB | n/a / separate |
+| Worker | host Node process â†’ staging Redis/DB | n/a / separate |
 | Admin / Agent / Customer web targets | `14173` / `14174` / `14175` (CORS allowlist; builds verified) | `5173/5174/5175` |
 
 **Compose file (committed):** `infrastructure/docker-compose.staging.yml`  
 **Secrets (gitignored):** `.env.staging.local`, `artifacts/staging/credentials.md`  
 **Harness:** `scripts/staging/`
 
-API/Worker ran as **host processes** bound to staging infra containers (profile `full` Docker image build deferred). Secrets are unique staging values — **not** `minioadmin`, **not** `Demo@12345`, **not** shared JWT/PII with `.env.development`.
+API/Worker ran as **host processes** bound to staging infra containers (profile `full` Docker image build deferred). Secrets are unique staging values â€” **not** `minioadmin`, **not** `Demo@12345`, **not** shared JWT/PII with `.env.development`.
 
 ---
 
@@ -57,41 +57,41 @@ API/Worker ran as **host processes** bound to staging infra containers (profile 
 | Admin web | http://127.0.0.1:14173 | CORS allowlisted; production build OK |
 | Agent web | http://127.0.0.1:14174 | CORS allowlisted; production build OK |
 | Customer web | http://127.0.0.1:14175 | CORS allowlisted; production build OK |
-| Public admin/agent/customer/api hostnames | — | **BLOCKED BY EXTERNAL CREDENTIAL / DNS** |
+| Public admin/agent/customer/api hostnames | â€” | **BLOCKED BY EXTERNAL CREDENTIAL / DNS** |
 
 ---
 
 ## B. Database
 
-- `prisma migrate deploy` → applied `20260924120000_init`; status **up to date**
+- `prisma migrate deploy` â†’ applied `20260924120000_init`; status **up to date**
 - DB name `bhairava_staging` isolated
 - Seed approach: **founder bootstrap + synthetic UAT fixtures** (no demo seed password)
 
 ## C. Founder bootstrap
 
 - `ALLOW_FOUNDER_BOOTSTRAP=yes` + strong staging-only password
-- `Demo@12345` / `Demo@12345` rejected by bootstrap guard — **PASS**
+- `Demo@12345` / `Demo@12345` rejected by bootstrap guard â€” **PASS**
 - Org `BHAIRAVA-STG` + FOUNDER user created; company settings include `mustRotateFounderPassword`
-- Audit trail present (`audit_logs` ≥ 1 after fixtures)
+- Audit trail present (`audit_logs` â‰¥ 1 after fixtures)
 
 ## D. Domains / cookies / CORS
 
 - Public DNS: **BLOCKED BY EXTERNAL CREDENTIAL / DNS**
-- CORS allowlist = localhost staging web origins only; unknown origin `evil.example.com` → no ACAO — **PASS**
+- CORS allowlist = localhost staging web origins only; unknown origin `evil.example.com` â†’ no ACAO â€” **PASS**
 - `COOKIE_SECURE=false` + `COOKIE_SAMESITE=lax` via **staging-specific env** for HTTP localhost only (documented limitation; production path still requires Secure cookies / HTTPS)
 
 ## E. Object storage
 
 - Staging bucket `bhairava-staging` created
 - Document create **201**
-- Signed download `GET /api/documents/:id/download` → MinIO presigned URL — **PASS**
-- ~~Note: `GET /api/documents` list currently can 500 with `Do not know how to serialize a BigInt`~~ → **FIXED IN CODE** (see §O). Staging re-verification of `GET /api/documents` still pending on the isolated stack.
+- Signed download `GET /api/documents/:id/download` â†’ MinIO presigned URL â€” **PASS**
+- **CONFIRMED FIXED ON STAGING:** `GET /api/documents` returns **200** for Founder/Admin/Finance/Agent; `sizeBytes` serialized as decimal **string** (no BigInt crash). Customer empty list 200. Pagination query accepted (200).
 
 ## F. Worker / reservation expiry
 
 - Worker running (60s sweep)
-- Flow: AVAILABLE → RESERVED → force `expiresAt` past → worker → AVAILABLE + `EXPIRED` — **PASS** (~20s)
-- `plot_status_history` rows written — **PASS**
+- Flow: AVAILABLE â†’ RESERVED â†’ force `expiresAt` past â†’ worker â†’ AVAILABLE + `EXPIRED` â€” **PASS** (~20s)
+- `plot_status_history` rows written â€” **PASS**
 
 ## G. Security negatives (all server-side fails)
 
@@ -100,30 +100,30 @@ API/Worker ran as **host processes** bound to staging infra containers (profile 
 | Unauthenticated protected route | 401 |
 | Invalid refresh | 401 |
 | Viewer mutation | 403 |
-| Finance → project setup | 403 |
-| Agent → plot master create | 403 |
-| Agent1 ↔ Agent2 customer isolation | PASS (no overlap; cross-id 404) |
-| Customer → INTERNAL document | 404 |
-| Customer1 → Customer2 booking | 404 |
-| Agent → other agent booking | 404 |
+| Finance â†’ project setup | 403 |
+| Agent â†’ plot master create | 403 |
+| Agent1 â†” Agent2 customer isolation | PASS (no overlap; cross-id 404) |
+| Customer â†’ INTERNAL document | 404 |
+| Customer1 â†’ Customer2 booking | 404 |
+| Agent â†’ other agent booking | 404 |
 | Receipt PDF unauth | 401 |
 | Receipt PDF other customer | 404 |
 
-## H. Full UAT Founder→Resale
+## H. Full UAT Founderâ†’Resale
 
-Automated path exercised: lead → reserve → book → pay → receipt PDF → registration → resale (**201** on corrected payload).  
-Agent/customer booking list visibility: customer sees own booking; agent list previously returned 0 (missing `booking.agentId` on create). **Code fix:** agent create auto-sets `agentId`; list matches `booking.agentId` OR `customer.agentId`; PII projected server-side. Staging re-verify of agent list count / Agent1↔Agent2 isolation still pending.
+Automated path exercised: lead â†’ reserve â†’ book â†’ pay â†’ receipt PDF â†’ registration â†’ resale (**201** on corrected payload).  
+Agent/customer booking list visibility: **re-verified** â€” Agent create sets `agentId`; Agent1 list shows own bookings with customer PII; Agent2 list excludes unrelated + GET returns 404; customer sees own. Responsible agent `{id,code,name}` present on attributed bookings.
 
 ## I. Mobile against staging
 
-- `apps/*-mobile/.env.staging` → `EXPO_PUBLIC_API_URL=http://127.0.0.1:14000/api` (gitignored pattern)
-- `tsc --noEmit` agent-mobile + customer-mobile — **exit 0**
-- No store signing / EAS — **BLOCKED BY EXTERNAL CREDENTIAL** (by design)
+- `apps/*-mobile/.env.staging` â†’ `EXPO_PUBLIC_API_URL=http://127.0.0.1:14000/api` (gitignored pattern)
+- `tsc --noEmit` agent-mobile + customer-mobile â€” **exit 0**
+- No store signing / EAS â€” **BLOCKED BY EXTERNAL CREDENTIAL** (by design)
 
 ## J. Receipt PDF
 
-- `GET /api/receipts/:id/pdf` authenticated finance — **200**, PDF bytes ~2268, `%PDF` magic
-- Unauthorized / other customer blocked — **PASS**
+- `GET /api/receipts/:id/pdf` authenticated finance â€” **200**, PDF bytes ~2268, `%PDF` magic
+- Unauthorized / other customer blocked â€” **PASS**
 
 ## K. Observability
 
@@ -132,48 +132,54 @@ Agent/customer booking list visibility: customer sees own booking; agent list pr
 
 ## L. Backup / restore
 
-- `pg_dump -Fc` staging → `artifacts/staging/bhairava_staging.dump` (gitignored)
-- Restore into `bhairava_staging_restore` → **8 users** verified
+- `pg_dump -Fc` staging â†’ `artifacts/staging/bhairava_staging.dump` (gitignored)
+- Restore into `bhairava_staging_restore` â†’ **8 users** verified
 - Object storage recovery: re-point `S3_*` to staging MinIO + restore bucket objects from MinIO versioning/backup (bucket isolated; document recovery procedure remains ops runbook)
 
-## M. Final gates (tip `5bf7eee` / staging where applicable; code fixes land on later tip)
+## M. Final gates (local re-verify on tip `2edeb21` + harness push)
 
 | Gate | Result |
 |------|--------|
-| Secret scan | `ok: true`, `blockedCount: 0` (informational findings only) |
-| Domain tests | 14/14 pass (re-verified cloud) |
-| API tests | **66/66 pass** (13 suites) — was 49/49; added BigInt serializer + booking attribution suites |
-| Admin/Agent/Customer web production builds | all **green** (prior local UAT) |
-| Expo/agent+customer `tsc --noEmit` | **green** (prior) |
-| Automated staging UAT | **47 pass / 0 fail** (prior tip); **re-run required** after BigInt/attribution tip |
-| API `nest build` | **green** (cloud, this tip) |
+| Secret scan | `ok: true`, `blockedCount: 0` |
+| Domain tests | **14/14** pass |
+| API tests | **66/66** pass (13 suites) |
+| Privacy negatives (`privacy.spec`) | **8/8** pass |
+| Staging reservation concurrency | **PASS** (statuses 201+409, no 500) |
+| Founderâ†’Resale staging UAT harness | **54/54** pass (0 fail) |
+| Admin/Agent/Customer web production builds | all **green** |
+| Expo agent+customer `tsc --noEmit` | **green** |
+| Documents list â‰  500 / sizeBytes string | **PASS** (Founder/Admin/Finance/Agent1; Customer empty 200) |
+| Agent1 vs Agent2 attribution | **PASS** (own list + PII; cross 404; unauth 401) |
+| Receipt PDF auth/isolation | **PASS** (auth 200; unauth 401; other customer 404) |
+| production-flow.mjs (demo-seed harness) | **N/A on staging** â€” targets demo seed; staging equivalent is `scripts/staging/run-uat.mjs` 54/54 |
+| API rebuild before staging restart | **green** |
 
-## N. Test identities (names only — passwords in gitignored credentials file)
+## N. Test identities (names only â€” passwords in gitignored credentials file)
 
-Founder, Admin, Finance, Viewer, Agent1, Agent2, Customer1, Customer2 — emails `*@staging.bhairava.local`.  
+Founder, Admin, Finance, Viewer, Agent1, Agent2, Customer1, Customer2 â€” emails `*@staging.bhairava.local`.  
 Credentials path (local only): `artifacts/staging/credentials.md` and `.env.staging.local`.
 
 ## Blockers
 
-1. **Public DNS / TLS / hosting credentials** — local HTTP staging only  
-2. **Email / SMS / WhatsApp / Push providers** — BLOCKED BY EXTERNAL CREDENTIAL  
-3. **Mobile store signing / EAS** — BLOCKED BY EXTERNAL CREDENTIAL  
-4. ~~Documents list BigInt serialization 500~~ — **fixed in code**; **local staging re-verify still required**  
-5. ~~Agent booking list attribution~~ — **fixed in code**; **local staging re-verify still required**  
+1. **Public DNS / TLS / hosting credentials** â€” local HTTP staging only
+2. **Email / SMS / WhatsApp / Push providers** â€” BLOCKED BY EXTERNAL CREDENTIAL
+3. **Mobile store signing / EAS** â€” BLOCKED BY EXTERNAL CREDENTIAL
 
-## O. Post-UAT defect fixes (cloud agent — unit/API tests only)
+~~Documents list BigInt 500~~ and ~~Agent booking attribution~~ are **fixed and confirmed on local isolated staging** (see O / M).
 
-### O.1 Documents list BigInt HTTP 500 — root cause
+## O. Post-UAT defect fixes (cloud agent â€” unit/API tests only)
 
-- **Exact cause:** Prisma maps PostgreSQL `BigInt` columns to JavaScript `bigint`. `DocumentsService.list()` returned rows including `sizeBytes` as raw `bigint`. Nest/Express `JSON.stringify` then threw `TypeError: Do not know how to serialize a BigInt` → HTTP 500.
+### O.1 Documents list BigInt HTTP 500 â€” root cause
+
+- **Exact cause:** Prisma maps PostgreSQL `BigInt` columns to JavaScript `bigint`. `DocumentsService.list()` returned rows including `sizeBytes` as raw `bigint`. Nest/Express `JSON.stringify` then threw `TypeError: Do not know how to serialize a BigInt` â†’ HTTP 500.
 - **Create/replace** paths already coerced `sizeBytes` (previously via `Number(...)`); **list** and **verify** did not.
-- **Fix approach:** API-wide response boundary — `BigIntJsonInterceptor` (`APP_INTERCEPTOR`) recursively converts every `bigint` to a **decimal string** (preserves precision beyond `Number.MAX_SAFE_INTEGER`). Plus explicit service-level `toString()` on document/booking/reservation/payment/finance responses (defense in depth). Representation is **string in JSON** for all DB BigInt values.
+- **Fix approach:** API-wide response boundary â€” `BigIntJsonInterceptor` (`APP_INTERCEPTOR`) recursively converts every `bigint` to a **decimal string** (preserves precision beyond `Number.MAX_SAFE_INTEGER`). Plus explicit service-level `toString()` on document/booking/reservation/payment/finance responses (defense in depth). Representation is **string in JSON** for all DB BigInt values.
 
 ### O.2 Endpoints audited / fixed
 
 | Area | Risk | Mitigation |
 |------|------|------------|
-| `GET /documents` list | `sizeBytes` bigint → 500 | list maps to string + global interceptor |
+| `GET /documents` list | `sizeBytes` bigint â†’ 500 | list maps to string + global interceptor |
 | `POST /documents`, replace, verify | sizeBytes | string at DTO boundary |
 | `GET/POST /bookings` | `agreementValuePaise`, `advancePaise` | already stringified; interceptor backup |
 | `GET/POST /reservations` | `amountPaise` | stringify + interceptor; agent filter added |
@@ -183,23 +189,38 @@ Credentials path (local only): `artifacts/staging/credentials.md` and `.env.stag
 
 ### O.3 Agent booking attribution
 
-- **Create:** when actor role is `AGENT`, `agentId` is forced to the actor’s `AgentProfile.id` (mirrors leads/visits). Staff may pass `agentId` or inherit `customer.agentId` / reservation agent. Unassigned customers get `agentId` set on book.
+- **Create:** when actor role is `AGENT`, `agentId` is forced to the actorâ€™s `AgentProfile.id` (mirrors leads/visits). Staff may pass `agentId` or inherit `customer.agentId` / reservation agent. Unassigned customers get `agentId` set on book.
 - **List filter (server-side):** agents without `allAgentsAccess` see bookings where `booking.agentId = me` **OR** `customer.agentId = me`.
-- **Projection:** `projectCustomerPii` — agents get customer name/phone only when they own the relationship; otherwise redacted. `responsibleAgent` / `agent` `{ id, code, name }` always included when present.
+- **Projection:** `projectCustomerPii` â€” agents get customer name/phone only when they own the relationship; otherwise redacted. `responsibleAgent` / `agent` `{ id, code, name }` always included when present.
 - **UI:** agent-web Bookings table shows Customer, Agent (code), Agreement (paise) aligned with API projection.
 
-### O.4 What was verified in cloud vs still needs local staging
+### O.4 Local staging re-verify (this session â€” Vijay Windows machine)
 
-| Check | Cloud agent | Local staging (Vijay) |
-|-------|-------------|------------------------|
-| Domain + API unit/regression tests | **Run here** (see tip commit) | Re-run optional |
-| `GET /api/documents` against live staging DB/MinIO | **Not run** (no staging stack in cloud) | **Required** |
-| Agent1 list shows own bookings after book | **Unit coverage** | **Required** on isolated compose |
-| Agent2 cannot see Agent1 booking PII | **Unit coverage** | **Required** |
-| Full 47-step UAT harness | **Not re-run** | **Required** after pull |
+| Check | Result |
+|-------|--------|
+| Pull tip `2edeb21`, rebuild API, restart staging API/worker | **PASS** â€” health/ready green |
+| `GET /api/documents` Founder/Admin/Finance/Agent | **200**, `sizeBytes` typeof string, no BigInt 500 |
+| Customer documents list | **200** empty (visibility filter) |
+| Agent1 bookings list | **200**, sees own booking(s), customer PII when related |
+| Agent2 bookings list / cross-GET | **0 rows** / **404**; unauth **401** |
+| New Agent1 booking `agentId` attributed | **PASS** |
+| Full staging UAT harness | **54 pass / 0 fail** |
+| Concurrency double-reserve | **201 + 409** |
+
+### O.5 Staging root-cause confirmation (live)
+
+Prior API log on old build: `GET /api/documents` â†’ `TypeError: Do not know how to serialize a BigInt` â†’ HTTP 500.
+After rebuild with `BigIntJsonInterceptor` + service `toString()`: same endpoint **200** with `"sizeBytes":"<decimal-string>"`.
 
 ## Promotion decision
 
-- **Local isolated staging UAT:** technically successful (CONDITIONAL YES).  
-- **Internet-facing staging / production promotion:** **NO** until DNS/TLS, external notification credentials, **local re-verify of document list + agent attribution**, and explicit merge/production authorization.  
-- **PR #10 remains OPEN and unmerged.**
+- **Local isolated staging UAT (tip with BigInt + attribution):** technically successful (**CONDITIONAL YES**, local-only).
+- **Internet-facing staging / production promotion:** **NO** until DNS/TLS, external notification credentials, and explicit merge/production authorization.
+- **PR #10 remains OPEN and unmerged.** Do not merge. Do not deploy production. Do not publish stores.
+
+## P. Artifacts (gitignored)
+
+- `artifacts/staging/uat-results.json` â€” 54/54
+- `artifacts/staging/concurrency-results.json` â€” 201+409
+- `artifacts/staging/credentials.md`, `.env.staging.local` â€” local secrets only
+

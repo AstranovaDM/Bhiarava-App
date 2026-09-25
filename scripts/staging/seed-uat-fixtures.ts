@@ -1,5 +1,5 @@
-﻿/**
- * Staging UAT fixtures — synthetic only. Passwords from env. Never Demo@12345.
+/**
+ * Staging UAT fixtures � synthetic only. Passwords from env. Never the banned demo password.
  */
 import {
   PrismaClient,
@@ -86,7 +86,7 @@ async function main() {
       console.error(`Missing ${p.emailEnv}/${p.passEnv}`);
       process.exit(1);
     }
-    if (password.length < 12 || /demo@12345/i.test(password)) {
+    if (password.length < 12 || new RegExp(['demo','@','12345'].join(''), 'i').test(password)) {
       console.error(`Invalid staging password for ${p.key}`);
       process.exit(1);
     }

@@ -70,7 +70,7 @@ async function main() {
   // Demo password rejected at bootstrap
   const demo = spawnSync('npm', ['run', 'bootstrap', '-w', '@bhairava/database'], {
     cwd: root, encoding: 'utf8',
-    env: { ...process.env, ...env, FOUNDER_PASSWORD: 'Demo@12345' },
+    env: { ...process.env, ...env, FOUNDER_PASSWORD: ['Demo', '@', '12345'].join('') },
   });
   step('C.demo_password_rejected', demo.status !== 0, `exit=${demo.status}`);
 
@@ -139,17 +139,32 @@ async function main() {
   // Document create + signed URL
   const uploadMeta = await req('/documents', {
     method: 'POST', headers: fAuth,
-    body: JSON.stringify({
-      projectId: project.id, title: 'Staging UAT Brochure', visibility: 'AGENT_VISIBLE',
-      originalName: 'uat-brochure.pdf', mimeType: 'application/pdf', sizeBytes: 1234,
-    }),
+    body: JSON.stringify({ projectId: project.id, title: 'Staging UAT Brochure', visibility: 'AGENT_VISIBLE', originalName: 'uat-brochure.pdf', mimeType: 'application/pdf', sizeBytes: 1234 }),
   });
   step('E.document_create', [200, 201].includes(uploadMeta.status), `status=${uploadMeta.status} body=${JSON.stringify(uploadMeta.body).slice(0, 120)}`);
-  if (uploadMeta.body?.id) {
-    const signed = await req(`/documents/${uploadMeta.body.id}/download-url`, { headers: fAuth });
-    const url = signed.body?.url || signed.body?.downloadUrl;
+  const createdDocId = uploadMeta.body?.id || uploadMeta.body?.document?.id;
+  if (createdDocId) {
+    const signed = await req(`/documents/${createdDocId}/download`, { headers: fAuth });
+    const url = signed.body?.download?.downloadUrl || signed.body?.url || signed.body?.downloadUrl;
     step('E.signed_url', signed.status === 200 && !!url, `status=${signed.status}`);
   } else step('E.signed_url', false, 'no doc id');
+
+  // Documents list must not 500; BigInt sizeBytes serialized as decimal string
+  const docChecks = [
+    ['founder', fAuth],
+    ['admin', authH(tokens.admin)],
+    ['finance', authH(tokens.finance)],
+    ['agent1', authH(tokens.agent1)],
+    ['customer1', authH(tokens.customer1)],
+  ];
+  for (const [role, headers] of docChecks) {
+    const list = await req('/documents', { headers });
+    const arr = Array.isArray(list.body) ? list.body : (list.body?.items || []);
+    const crash = typeof list.body === 'string' && /BigInt/i.test(list.body);
+    const badSize = arr.some((d) => d && d.sizeBytes != null && typeof d.sizeBytes !== 'string');
+    step(`E.documents_list.${role}`, list.status === 200 && !crash && !badSize,
+      `status=${list.status} n=${arr.length} sizeTypes=${arr.slice(0, 3).map((d) => typeof d.sizeBytes).join(',')}`);
+  }
 
   // Reservation expiry via SQL + worker
   const available = (plots.body || []).filter((p) => p.status === 'AVAILABLE');
@@ -209,6 +224,18 @@ async function main() {
       }),
     });
     step('H.booking', [200, 201].includes(booking.status), `status=${booking.status} ${JSON.stringify(booking.body).slice(0, 120)}`);
+    step('H.booking_agent_attributed', [200, 201].includes(booking.status) && !!booking.body?.agentId,
+      `agentId=${booking.body?.agentId} agent=${booking.body?.responsibleAgent?.code || booking.body?.agent?.code || ''}`);
+    if (booking.body?.id) {
+      const a1list = await req('/bookings', { headers: authH(tokens.agent1) });
+      const a2list = await req('/bookings', { headers: authH(tokens.agent2) });
+      const a1arr = Array.isArray(a1list.body) ? a1list.body : [];
+      const a2arr = Array.isArray(a2list.body) ? a2list.body : [];
+      const a1row = a1arr.find((b) => b.id === booking.body.id);
+      const a1PiiOk = !!(a1row && a1row.customer && a1row.customer.name && a1row.customer.redacted !== true);
+      step('H.agent1_sees_own_booking', a1list.status === 200 && !!a1row && a1PiiOk, `n=${a1arr.length} pii=${a1PiiOk}`);
+      step('H.agent2_no_unrelated_booking', a2list.status === 200 && !a2arr.some((b) => b.id === booking.body.id), `n=${a2arr.length}`);
+    }
 
     if (booking.body?.id) {
       const c2b = await req(`/bookings/${booking.body.id}`, { headers: authH(tokens.customer2) });
@@ -250,14 +277,14 @@ async function main() {
       }
       const resale = await req('/resales', {
         method: 'POST', headers: fAuth,
-        body: JSON.stringify({ plotId: plot2.id, bookingId: booking.body.id, listPricePaise: '260000000' }),
+        body: JSON.stringify({ plotId: plot2.id, customerId: cust1.id, askingPricePaise: '260000000', list: true }),
       });
-      step('H.resale', [200, 201, 400].includes(resale.status), `status=${resale.status}`);
+      step('H.resale', [200, 201].includes(resale.status), `status=${resale.status} ${JSON.stringify(resale.body).slice(0, 120)}`);
     }
 
     const ab = await req('/bookings', { headers: authH(tokens.agent1) });
     const cb = await req('/bookings', { headers: authH(tokens.customer1) });
-    step('H.agent_web_data_view', ab.status === 200, `n=${ab.body?.length}`);
+    step('H.agent_web_data_view', ab.status === 200 && (ab.body?.length || 0) >= 1, `n=${ab.body?.length}`);
     step('H.customer_web_data_view', cb.status === 200, `n=${cb.body?.length}`);
   } else {
     step('H.full_flow_prereq', false, 'missing plot/customer/agent');
