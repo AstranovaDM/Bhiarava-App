@@ -3,7 +3,7 @@
 **Generated:** 2026-09-25 IST  
 **Branch:** `feat/production-platform`  
 **Start tip:** `4a9d5b9`  
-**Current tip (pre-tsc-fix):** `238cf96` (`238cf964a51fa721762d25feaf6dad0b6abc0397`) ? final tip is the commit containing this update; confirm with `git rev-parse HEAD`.
+**Current tip:** `996e90d` (`996e90d1836c81442a435dd0dfbbeac0502c7977`). Confirm with `git rev-parse HEAD`.
 **Push status:** **NOT PUSHED** (explicit stop at push boundary)
 
 ## Commits since start tip
@@ -196,6 +196,8 @@ See `docs/MOBILE_RELEASE.md`.
 Verify tip, then:
 
 ```
+996e90d docs(release): tip c7052e1 â€” mobile tsc gate closed
+c7052e1 fix(mobile): unify @types/react@19.3.0 â€” agent+customer tsc --noEmit green
 238cf96 docs(release): finalize readiness report tip guidance
 2bf11fa docs(release): tip SHA 8b59d83 on readiness report
 8b59d83 docs(release): readiness report + gate fixes (PDF test, scan allowlist, mobile skipLibCheck)
@@ -230,4 +232,4 @@ c84126f chore(release): hygiene â€” gitignore, untrack QA shots, strip demo
 
 ---
 
-*End of report. Mobile tsc gate closed. Pre-commit HEAD: `238cf96`. Confirm tip with `git rev-parse --short HEAD`.*
+*End of report. Tip `996e90d`. Mobile tsc gate closed. Still at push boundary (no push executed).*
