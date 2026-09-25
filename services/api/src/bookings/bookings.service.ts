@@ -7,6 +7,7 @@ import {
 import { BookingState, PlotStatus, Prisma, ReservationState, StatusChangeSource } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import type { AuthPrincipal } from '../auth/auth.types';
 import { isTransitionAllowed } from '@bhairava/domain';
 
@@ -25,6 +26,7 @@ export class BookingsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   
@@ -165,6 +167,25 @@ export class BookingsService {
       entityType: 'Booking',
       entityId: result.id,
       metaJson: { plotId: input.plotId, customerId: input.customerId },
+    });
+    const cust = await this.prisma.customer.findUnique({ where: { id: result.customerId }, select: { userId: true } });
+    if (cust?.userId) {
+      await this.notifications.notify({
+        organizationId: actor.organizationId,
+        userId: cust.userId,
+        title: 'Booking created',
+        body: 'Your booking was confirmed.',
+        payloadJson: { kind: 'booking_created', bookingId: result.id, plotId: result.plotId, href: '/bookings' },
+        actorId: actor.userId,
+      });
+    }
+    await this.notifications.notify({
+      organizationId: actor.organizationId,
+      userId: actor.userId,
+      title: 'Booking created',
+      body: 'Booking ' + result.id + ' created.',
+      payloadJson: { kind: 'booking_created', bookingId: result.id, plotId: result.plotId, href: '/bookings' },
+      actorId: actor.userId,
     });
     return {
       ...result,

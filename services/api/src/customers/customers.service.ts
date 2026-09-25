@@ -185,8 +185,13 @@ export class CustomersService {
       phone: string;
       email?: string;
       city?: string;
+      address?: string;
+      state?: string;
+      pincode?: string;
+      kycStatus?: string;
       agentId?: string;
       notes?: string;
+      source?: string;
       pan?: string;
       aadhaar?: string;
     },
@@ -204,6 +209,11 @@ export class CustomersService {
         phone: body.phone,
         email: body.email,
         city: body.city,
+        address: body.address,
+        state: body.state,
+        pincode: body.pincode,
+        kycStatus: body.kycStatus,
+        source: body.source,
         agentId,
         notes: body.notes,
         panEncrypted,

@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
-import { IsBoolean, IsOptional, IsString, MinLength } from 'class-validator';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { IsArray, IsBoolean, IsNumber, IsObject, IsOptional, IsString, MinLength, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ProjectsService } from './projects.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PermissionsGuard, RequirePermissions } from '../rbac/permissions.guard';
@@ -28,6 +29,30 @@ class UpdateProjectDto {
   @IsOptional() @IsBoolean() agentVisible?: boolean;
   @IsOptional() @IsBoolean() customerListed?: boolean;
   @IsOptional() @IsBoolean() resaleAvailable?: boolean;
+  @IsOptional() @IsObject() settingsJson?: Record<string, unknown>;
+  @IsOptional() @IsString() pincode?: string;
+}
+
+class PlotTypeDto {
+  @IsString() name!: string;
+  @IsOptional() @IsString() code?: string;
+  @IsString() areaSqYd!: string;
+  @IsOptional() @IsString() lengthFt?: string;
+  @IsOptional() @IsString() widthFt?: string;
+  @IsOptional() @IsString() category?: string;
+}
+
+class PricingDto {
+  @IsString() baseRatePerSqYd!: string;
+  @IsOptional() @IsObject() rulesJson?: Record<string, unknown>;
+}
+
+class AmenityDto {
+  @IsString() name!: string;
+  @IsOptional() @IsString() groupName?: string;
+  @IsOptional() @IsString() description?: string;
+  @IsOptional() @IsString() status?: string;
+  @IsOptional() @IsNumber() completionPct?: number;
 }
 
 @Controller('projects')
@@ -57,5 +82,49 @@ export class ProjectsController {
   @RequirePermissions('projects.edit')
   update(@CurrentUser() user: AuthPrincipal, @Param('id') id: string, @Body() dto: UpdateProjectDto) {
     return this.projects.update(user, id, dto as any);
+  }
+
+  @Get(':id/setup')
+  @RequirePermissions('projects.view')
+  setup(@CurrentUser() user: AuthPrincipal, @Param('id') id: string) {
+    return this.projects.setupBundle(user, id);
+  }
+
+  @Post(':id/plot-types')
+  @RequirePermissions('projects.edit')
+  addPlotType(@CurrentUser() user: AuthPrincipal, @Param('id') id: string, @Body() dto: PlotTypeDto) {
+    return this.projects.addPlotType(user, id, dto);
+  }
+
+  @Delete(':id/plot-types/:plotTypeId')
+  @RequirePermissions('projects.edit')
+  removePlotType(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id') id: string,
+    @Param('plotTypeId') plotTypeId: string,
+  ) {
+    return this.projects.removePlotType(user, id, plotTypeId);
+  }
+
+  @Put(':id/pricing')
+  @RequirePermissions('projects.edit')
+  upsertPricing(@CurrentUser() user: AuthPrincipal, @Param('id') id: string, @Body() dto: PricingDto) {
+    return this.projects.upsertPricing(user, id, dto);
+  }
+
+  @Post(':id/amenities')
+  @RequirePermissions('projects.edit')
+  addAmenity(@CurrentUser() user: AuthPrincipal, @Param('id') id: string, @Body() dto: AmenityDto) {
+    return this.projects.addAmenity(user, id, dto);
+  }
+
+  @Delete(':id/amenities/:amenityId')
+  @RequirePermissions('projects.edit')
+  removeAmenity(
+    @CurrentUser() user: AuthPrincipal,
+    @Param('id') id: string,
+    @Param('amenityId') amenityId: string,
+  ) {
+    return this.projects.removeAmenity(user, id, amenityId);
   }
 }

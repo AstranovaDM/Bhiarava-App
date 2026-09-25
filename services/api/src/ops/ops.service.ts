@@ -44,8 +44,13 @@ export class OpsService {
       orderBy: { issuedAt: 'desc' },
       take: 200,
       include: {
-        payment: { select: { id: true, amountPaise: true, method: true, paidAt: true } },
-        booking: { select: { id: true, plotId: true, customerId: true } },
+        payment: {
+          select: {
+            id: true, amountPaise: true, method: true, paidAt: true, txnRef: true,
+            receiptNumber: true, recordedByUserId: true, customerId: true, plotId: true, projectId: true,
+          },
+        },
+        booking: { select: { id: true, plotId: true, customerId: true, projectId: true } },
       },
     });
     return rows.map((r) => ({
@@ -54,6 +59,65 @@ export class OpsService {
         ? { ...r.payment, amountPaise: r.payment.amountPaise.toString() }
         : null,
     }));
+  }
+
+  async receipt(actor: AuthPrincipal, id: string) {
+    const row = await this.prisma.receipt.findFirst({
+      where: { id, organizationId: actor.organizationId },
+      include: {
+        payment: true,
+        booking: {
+          include: {
+            plot: { select: { id: true, number: true, status: true, areaSqYd: true } },
+            customer: { select: { id: true, name: true, phone: true, email: true, city: true } },
+            project: { select: { id: true, name: true, code: true, city: true } },
+          },
+        },
+      },
+    });
+    if (!row) throw new NotFoundException('Receipt not found');
+    if (actor.roleCode === 'CUSTOMER') {
+      const mine = await this.prisma.customer.findFirst({
+        where: { userId: actor.userId, organizationId: actor.organizationId },
+      });
+      if (!mine || row.booking.customerId !== mine.id) throw new NotFoundException('Receipt not found');
+    }
+    let generatedBy: { id: string; displayName: string | null; email: string | null } | null = null;
+    if (row.payment.recordedByUserId) {
+      const u = await this.prisma.user.findUnique({
+        where: { id: row.payment.recordedByUserId },
+        select: { id: true, displayName: true, email: true },
+      });
+      generatedBy = u;
+    }
+    return {
+      id: row.id,
+      receiptNumber: row.receiptNumber,
+      issuedAt: row.issuedAt,
+      pdfKey: row.pdfKey,
+      metaJson: row.metaJson,
+      payment: {
+        id: row.payment.id,
+        amountPaise: row.payment.amountPaise.toString(),
+        method: row.payment.method,
+        paidAt: row.payment.paidAt,
+        txnRef: row.payment.txnRef,
+        notes: row.payment.notes,
+      },
+      booking: {
+        id: row.booking.id,
+        state: row.booking.state,
+      },
+      customer: row.booking.customer,
+      plot: row.booking.plot
+        ? {
+            ...row.booking.plot,
+            areaSqYd: row.booking.plot.areaSqYd?.toString?.() ?? null,
+          }
+        : null,
+      project: row.booking.project,
+      generatedBy,
+    };
   }
 
   async commissions(actor: AuthPrincipal) {

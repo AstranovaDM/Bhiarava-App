@@ -61,6 +61,12 @@ export class OpsController {
     return this.ops.receipts(user);
   }
 
+  @Get('receipts/:id')
+  @RequirePermissions('finance.view')
+  receipt(@CurrentUser() user: AuthPrincipal, @Param('id') id: string) {
+    return this.ops.receipt(user, id);
+  }
+
   @Get('commissions')
   @RequirePermissions('finance.view')
   commissions(@CurrentUser() user: AuthPrincipal) {

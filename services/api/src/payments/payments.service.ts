@@ -2,6 +2,7 @@
 import { InstallmentStatus, PaymentMethod, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { FinanceService } from '../finance/finance.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import type { AuthPrincipal } from '../auth/auth.types';
 
 @Injectable()
@@ -9,6 +10,7 @@ export class PaymentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly finance: FinanceService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async list(actor: AuthPrincipal, q: { bookingId?: string; projectId?: string } = {}) {
@@ -102,6 +104,43 @@ export class PaymentsService {
       }
 
       return { payment, receipt };
+    });
+
+    const customer = await this.prisma.customer.findUnique({
+      where: { id: booking.customerId },
+      select: { userId: true, name: true },
+    });
+    const amountStr = result.payment.amountPaise.toString();
+    const rcp = result.receipt.receiptNumber;
+    if (customer?.userId) {
+      await this.notifications.notify({
+        organizationId: actor.organizationId,
+        userId: customer.userId,
+        title: 'Payment received',
+        body: 'Payment of ' + amountStr + ' paise recorded. Receipt ' + rcp + '.',
+        payloadJson: {
+          kind: 'payment_received',
+          paymentId: result.payment.id,
+          receiptId: result.receipt.id,
+          bookingId: booking.id,
+          href: '/receipts/' + result.receipt.id,
+        },
+        actorId: actor.userId,
+      });
+    }
+    await this.notifications.notify({
+      organizationId: actor.organizationId,
+      userId: actor.userId,
+      title: 'Payment recorded',
+      body: 'Receipt ' + rcp + ' issued for booking ' + booking.id + '.',
+      payloadJson: {
+        kind: 'payment_received',
+        paymentId: result.payment.id,
+        receiptId: result.receipt.id,
+        bookingId: booking.id,
+        href: '/receipts/' + result.receipt.id,
+      },
+      actorId: actor.userId,
     });
 
     return {

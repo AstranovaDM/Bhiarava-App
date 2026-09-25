@@ -11,8 +11,13 @@ class CreateCustomerDto {
   @IsString() @MinLength(5) phone!: string;
   @IsOptional() @IsString() email?: string;
   @IsOptional() @IsString() city?: string;
+  @IsOptional() @IsString() address?: string;
+  @IsOptional() @IsString() state?: string;
+  @IsOptional() @IsString() pincode?: string;
+  @IsOptional() @IsString() kycStatus?: string;
   @IsOptional() @IsString() agentId?: string;
   @IsOptional() @IsString() notes?: string;
+  @IsOptional() @IsString() source?: string;
   @IsOptional() @IsString() pan?: string;
   @IsOptional() @IsString() aadhaar?: string;
 }

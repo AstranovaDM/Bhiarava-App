@@ -114,6 +114,17 @@ export function createApiClient(opts: ApiClientOptions) {
       create: (body: { name: string; code: string; city?: string; state?: string; location?: string; description?: string }) =>
         request<ProjectSummary>('POST', '/api/projects', body),
       update: (id: string, body: Record<string, unknown>) => request<ProjectSummary>('PATCH', '/api/projects/' + id, body),
+      setup: (id: string) => request<Record<string, unknown>>('GET', '/api/projects/' + id + '/setup'),
+      addPlotType: (id: string, body: Record<string, unknown>) =>
+        request<Record<string, unknown>>('POST', '/api/projects/' + id + '/plot-types', body),
+      removePlotType: (id: string, plotTypeId: string) =>
+        request<{ ok: boolean }>('DELETE', '/api/projects/' + id + '/plot-types/' + plotTypeId),
+      upsertPricing: (id: string, body: { baseRatePerSqYd: string; rulesJson?: Record<string, unknown> }) =>
+        request<Record<string, unknown>>('PUT', '/api/projects/' + id + '/pricing', body),
+      addAmenity: (id: string, body: Record<string, unknown>) =>
+        request<Record<string, unknown>>('POST', '/api/projects/' + id + '/amenities', body),
+      removeAmenity: (id: string, amenityId: string) =>
+        request<{ ok: boolean }>('DELETE', '/api/projects/' + id + '/amenities/' + amenityId),
     },
     plots: {
       listByProject: (projectId: string) => request<PlotSummary[]>('GET', '/api/plots/project/' + projectId),
@@ -218,6 +229,7 @@ export function createApiClient(opts: ApiClientOptions) {
     },
     receipts: {
       list: () => request<Array<Record<string, unknown>>>('GET', '/api/receipts'),
+      get: (id: string) => request<Record<string, unknown>>('GET', '/api/receipts/' + id),
     },
     commissions: {
       list: () => request<Array<Record<string, unknown>>>('GET', '/api/commissions'),
@@ -247,7 +259,15 @@ export function createApiClient(opts: ApiClientOptions) {
       summary: () => request<Record<string, unknown>>('GET', '/api/reports/summary'),
     },
     notifications: {
-      list: () => request<Array<Record<string, unknown>>>('GET', '/api/notifications'),
+      list: (q?: { unreadOnly?: boolean; take?: number }) => {
+        const params = new URLSearchParams();
+        if (q?.unreadOnly) params.set('unreadOnly', 'true');
+        if (q?.take) params.set('take', String(q.take));
+        const qs = params.toString();
+        return request<Array<Record<string, unknown>>>('GET', '/api/notifications' + (qs ? '?' + qs : ''));
+      },
+      markRead: (id: string) => request<Record<string, unknown>>('PATCH', '/api/notifications/' + id + '/read'),
+      markAllRead: () => request<{ updated: number }>('POST', '/api/notifications/read-all'),
     },
     health: () => request<{ ok: boolean }>('GET', '/api/health'),
   };
