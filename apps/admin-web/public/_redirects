@@ -1,4 +1,1 @@
-/app/admin/assets/*      /assets/:splat       200
-/app/admin/branding/*    /branding/:splat     200
-/app/admin/*             /index.html          200
-/                        /app/admin/           302
+/*    /index.html    200
