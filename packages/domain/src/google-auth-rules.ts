@@ -168,6 +168,72 @@ export function isInviteExpired(expiresAt: Date | string, now: Date = new Date()
   return new Date(expiresAt).getTime() <= now.getTime();
 }
 
+/**
+ * Invite hint binding: when the invite carries email/phone hints, the claimer
+ * must match. Mismatch rejects without PII leak and without attribution transfer.
+ * No hints → generic token flow remains OK.
+ */
+export function decideInviteHintMatch(params: {
+  emailHint: string | null | undefined;
+  phoneHintNormalized: string | null | undefined;
+  claimantEmail: string | null | undefined;
+  claimantMobileNormalized: string | null | undefined;
+}):
+  | { ok: true }
+  | { ok: false; code: 'INVITE_HINT_MISMATCH'; message: string } {
+  const emailHint = params.emailHint?.trim().toLowerCase() || null;
+  if (emailHint) {
+    const claimant = params.claimantEmail?.trim().toLowerCase() || '';
+    if (!claimant || claimant !== emailHint) {
+      return {
+        ok: false,
+        code: 'INVITE_HINT_MISMATCH',
+        message: 'This invite cannot be used with the signed-in account.',
+      };
+    }
+  }
+  const phoneHint = params.phoneHintNormalized?.trim() || null;
+  if (phoneHint) {
+    const claimant = params.claimantMobileNormalized?.trim() || '';
+    if (!claimant || claimant !== phoneHint) {
+      return {
+        ok: false,
+        code: 'INVITE_HINT_MISMATCH',
+        message: 'This invite cannot be used with the provided mobile number.',
+      };
+    }
+  }
+  return { ok: true };
+}
+
+/**
+ * Original acquisition attribution must never be overwritten on later reassignment.
+ * Sales-owner agentId may change; attributionSource / invitedByAgentId stay locked.
+ */
+export function preserveOriginalAttribution(params: {
+  existingAttributionSource: AttributionSourceCode | string | null | undefined;
+  existingInvitedByAgentId: string | null | undefined;
+  incomingAttributionSource: AttributionSourceCode;
+  incomingInvitedByAgentId: string | null;
+}): {
+  attributionSource: AttributionSourceCode | string;
+  invitedByAgentId: string | null;
+  retainedOriginal: boolean;
+} {
+  if (params.existingAttributionSource) {
+    return {
+      attributionSource: params.existingAttributionSource,
+      invitedByAgentId: params.existingInvitedByAgentId ?? null,
+      retainedOriginal: true,
+    };
+  }
+  return {
+    attributionSource: params.incomingAttributionSource,
+    invitedByAgentId: params.incomingInvitedByAgentId,
+    retainedOriginal: false,
+  };
+}
+
 export function invitePublicMeta(params: {
   agentName: string;
   agentCode: string;

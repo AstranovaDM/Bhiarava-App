@@ -2,11 +2,15 @@ import { Body, Controller, Get, Post, Req, Res, UseGuards } from '@nestjs/common
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { GoogleAuthService } from './google-auth.service';
+import { MpinAuthService } from './mpin-auth.service';
 import {
   CompleteAgentProfileDto,
   CompleteCustomerProfileDto,
   GoogleContinueDto,
   LoginDto,
+  MpinLoginDto,
+  MpinResetDto,
+  MpinSetupDto,
   PasswordResetConfirmDto,
   PasswordResetRequestDto,
   RefreshDto,
@@ -20,6 +24,7 @@ export class AuthController {
   constructor(
     private readonly auth: AuthService,
     private readonly googleAuth: GoogleAuthService,
+    private readonly mpinAuth: MpinAuthService,
   ) {}
 
   private setRefreshCookie(res: Response, refreshToken: string, expiresAt: string) {
@@ -48,7 +53,6 @@ export class AuthController {
     return result;
   }
 
-  /** Customer: Continue with Google only (new + returning). */
   @Post('google/customer')
   async googleCustomer(
     @Body() dto: GoogleContinueDto,
@@ -63,7 +67,6 @@ export class AuthController {
     return result;
   }
 
-  /** Agent: open Google signup / sign-in (no Admin approval). */
   @Post('google/agent')
   async googleAgent(
     @Body() dto: GoogleContinueDto,
@@ -96,6 +99,40 @@ export class AuthController {
     @Req() req: Request,
   ) {
     return this.googleAuth.completeAgentProfile(user, dto, { ip: req.ip });
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('mpin/setup')
+  mpinSetup(@CurrentUser() user: AuthPrincipal, @Body() dto: MpinSetupDto, @Req() req: Request) {
+    return this.mpinAuth.setup(user, dto, { ip: req.ip });
+  }
+
+  @Post('mpin/login')
+  async mpinLogin(
+    @Body() dto: MpinLoginDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.mpinAuth.login(dto, {
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
+    this.setRefreshCookie(res, result.refreshToken!, result.refreshExpiresAt);
+    return result;
+  }
+
+  @Post('mpin/reset')
+  async mpinReset(
+    @Body() dto: MpinResetDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.mpinAuth.reset(dto, {
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
+    this.setRefreshCookie(res, result.refreshToken!, result.refreshExpiresAt);
+    return result;
   }
 
   @Post('refresh')

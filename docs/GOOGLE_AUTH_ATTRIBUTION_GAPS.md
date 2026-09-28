@@ -1,32 +1,26 @@
 # Google auth, invites, attribution, Bhairava Direct — honest gaps
 
-Shipped on `feat/production-platform` tip via this PR. Live schema investigated before coding; production path remains Nest + Prisma (no PLATFORM_SEED / mock repos / localStorage business data).
+Shipped on production tip synced from Astranova `main` (`ffdfa24`) via Badhula `feat/production-platform`.
 
-## Implemented
+Production path remains Nest + Prisma (no PLATFORM_SEED / mock repos / localStorage business data).
 
-- **Customer Google-only continue** (`POST /api/auth/google/customer`) + profile completion (`POST /api/auth/customer/complete-profile`)
-  - Name editable, email from Google (locked), mobile required, city/referral optional, terms required → ACTIVE
-  - Returning users with `profileCompletedAt` skip profile
-  - Phone normalize (`normalizePhoneIn`); Google `sub` / email → sign-in
-  - Mobile-only dup → conflict, **no merge**, generic message (no PII leak)
-  - `DIRECT_APP` → sales owner **Bhairava Direct**; invite claim → inviting agent
-- **Agent open Google signup** (`POST /api/auth/google/agent`) + profile → ACTIVE + agent code, **no Admin approval**
-- **Secure invites** (`POST /api/invites`, `GET /api/invites/:token`) — hashed token, copy/share URL; attribution fields separate (`attributionSource`, `invitedByAgentId` vs sales-owner `agentId`)
-- **No steal by phone** on invite create + `customers.create` + assignment audit actions
-- **Site visit request** (`POST /api/visits/request`) → primary agent if Active else Bhairava Direct
-- **Brand lock**: surfaces/secondary blue-tint → green/neutral; `#006D32` / `#00D166` / white; Space Grotesk + Inter; Google button is the only blue exception
-- Staff email/password login **retained** for admin/finance (not customer/agent portal path)
+## Implemented (web)
 
-## Gaps / follow-ups (honest)
+- Customer / Agent Google continue + profile completion
+- Agent **mobile required** (+ city/region) — no activate without normalized mobile; no OTP
+- Production Google fallback safe: missing client ID → controlled unavailable message; **no** `!CLIENT_ID` bypass
+- Invite email/phone hint binding; mismatch rejects without PII / attribution steal
+- DIRECT_APP → Bhairava Direct; AGENT_INVITE → inviting agent; original attribution retained on reassignment
+- Site visit request → primary agent else Bhairava Direct
+- Brand: `#006D32` / `#00D166` / white / green neutrals; decorative gold deprecated/aliased
 
-1. **Live Google Identity Services** — requires real `GOOGLE_CLIENT_ID_*` / `VITE_GOOGLE_CLIENT_ID_*`. Local/dev can use `GOOGLE_AUTH_DEV_BYPASS` + `dev.<payload>` tokens (disabled in production).
-2. **Mobile apps** (`apps/customer-mobile`, `apps/agent-mobile`) — web flows updated; Expo Google Sign-In not wired in this PR (same API contracts ready).
-3. **Customer preferred project picker** — API accepts `preferredProjectId`; onboarding UI does not yet list projects (optional field).
-4. **Invite token on Google continue** is carried to profile complete; if the user closes the tab between Google and profile, they must reopen the invite link (token in query).
-5. **Prisma client generate / migrate deploy** must run in each environment before API boot (`passwordHash` nullable + new columns/tables).
-6. **Admin password reset for Google-only users** — Google users have `passwordHash: null`; password login correctly rejects; no “set password” path yet (by design for portals).
-7. **Bhairava Direct user** is a system AGENT row (`isSystem: true`, code `BHAIRAVA_DIRECT`) — not a human Google account; ensure ops do not delete it.
-8. **Unit tests cover rule engines** (signup/dup/invite/attribution/privacy/routing). Full DB integration / Playwright Google GIS tests are still environment-dependent.
+## Gaps / follow-ups
+
+1. **Expo Google auth** — not finished. See `docs/EXPO_GOOGLE_AUTH_GAP.md`.
+2. Live Google Identity Services requires real `GOOGLE_CLIENT_ID_*` / `VITE_GOOGLE_CLIENT_ID_*`.
+3. Preferred project picker UI still optional on customer onboarding.
+4. `prisma migrate deploy` required against existing staging DBs before API boot.
+5. Astranova write push of `feat/production-platform:main` only if write access + fast-forward.
 
 ## Migration
 

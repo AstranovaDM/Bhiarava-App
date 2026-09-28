@@ -181,8 +181,8 @@ export function createApiClient(opts: ApiClientOptions) {
         ),
       completeAgentProfile: (body: {
         name: string;
-        phone?: string;
-        region?: string;
+        phone: string;
+        region: string;
         termsAccepted: boolean;
       }) =>
         request<{ user: PublicUser; agentId: string | null; agentCode: string | null; skipped: boolean }>(
@@ -190,6 +190,29 @@ export function createApiClient(opts: ApiClientOptions) {
           '/api/auth/agent/complete-profile',
           body,
         ),
+      mpinSetup: (body: { mpin: string; confirmMpin: string }) =>
+        request<{ user: PublicUser; ok: boolean }>('POST', '/api/auth/mpin/setup', body),
+      mpinLogin: async (body: { identifier: string; mpin: string; role: 'CUSTOMER' | 'AGENT' }) => {
+        const session = await request<AuthSession>('POST', '/api/auth/mpin/login', body, {
+          skipAuthRefresh: true,
+        });
+        if (opts.tokens) await opts.tokens.setTokens(session.accessToken, session.refreshToken ?? null);
+        resetUnauthorizedGate();
+        return session;
+      },
+      mpinReset: async (body: {
+        idToken: string;
+        mpin: string;
+        confirmMpin: string;
+        role: 'CUSTOMER' | 'AGENT';
+      }) => {
+        const session = await request<AuthSession>('POST', '/api/auth/mpin/reset', body, {
+          skipAuthRefresh: true,
+        });
+        if (opts.tokens) await opts.tokens.setTokens(session.accessToken, session.refreshToken ?? null);
+        resetUnauthorizedGate();
+        return session;
+      },
       /**
        * Refresh session. Prefer HTTP-only cookie (empty body) for web;
        * optional body refreshToken for native clients that store a refresh token securely.

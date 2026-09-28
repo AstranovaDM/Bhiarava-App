@@ -237,6 +237,11 @@ model User {
   profileCompletedAt  DateTime?
   termsAcceptedAt     DateTime?
   lastLoginAt         DateTime?
+  /** Argon2id hash of 4-digit MPIN — never plaintext. Customer/Agent only. */
+  mpinHash            String?
+  mpinSetAt           DateTime?
+  mpinFailedAttempts  Int               @default(0)
+  mpinLockedUntil     DateTime?
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
 

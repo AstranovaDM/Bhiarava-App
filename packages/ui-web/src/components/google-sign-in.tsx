@@ -26,9 +26,16 @@ export type GoogleSignInButtonProps = {
   /**
    * Dev-only: when true, also show a neutral “Continue with Google (local)” control
    * that emits a `dev.<payload>` token for API GOOGLE_AUTH_DEV_BYPASS.
-   * Never enable in production builds.
+   * Callers MUST gate this with VITE_GOOGLE_AUTH_DEV_BYPASS && !PROD.
+   * Never enable solely because clientId is missing.
    */
   allowDevBypass?: boolean;
+  /**
+   * When true and clientId is missing (and allowDevBypass is false), render a
+   * controlled unavailable message instead of a fake Google button.
+   */
+  requireClientIdInProduction?: boolean;
+  unavailableMessage?: string;
   /** Prefill for local bypass identity. */
   devEmail?: string;
   devName?: string;
@@ -44,7 +51,9 @@ export function GoogleSignInButton({
   label = "Continue with Google",
   className,
   disabled,
-  allowDevBypass,
+  allowDevBypass = false,
+  requireClientIdInProduction = true,
+  unavailableMessage = "Google sign-in is temporarily unavailable. Please contact Bhairava.",
   devEmail = "new.customer@example.com",
   devName = "New Customer",
 }: GoogleSignInButtonProps) {
@@ -52,6 +61,10 @@ export function GoogleSignInButton({
   const hostRef = useRef<HTMLDivElement>(null);
   const [gisError, setGisError] = useState("");
   const [busy, setBusy] = useState(false);
+
+  const canUseGis = Boolean(clientId);
+  const canUseDev = Boolean(allowDevBypass);
+  const unavailable = !canUseGis && !canUseDev && requireClientIdInProduction;
 
   useEffect(() => {
     if (!clientId || disabled) return;
@@ -105,6 +118,10 @@ export function GoogleSignInButton({
   }, [clientId, disabled, onCredential]);
 
   async function onDevContinue() {
+    if (!allowDevBypass) {
+      setGisError(unavailableMessage);
+      return;
+    }
     setBusy(true);
     setGisError("");
     try {
@@ -123,28 +140,38 @@ export function GoogleSignInButton({
     }
   }
 
+  if (unavailable) {
+    return (
+      <div className={cn("space-y-3", className)} data-testid="google-sign-in-unavailable">
+        <p role="status" className="rounded-xl bg-muted/60 px-3.5 py-3 text-sm text-foreground">
+          {unavailableMessage}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className={cn("space-y-3", className)} data-testid="google-sign-in">
-      {clientId ? (
+      {canUseGis ? (
         <div
           id={`gis-${hostId}`}
           ref={hostRef}
           className="flex min-h-11 w-full justify-center [&iframe]:!w-full"
           aria-label={label}
         />
-      ) : (
+      ) : canUseDev ? (
         <button
           type="button"
-          disabled={disabled || busy || !allowDevBypass}
+          disabled={disabled || busy}
           onClick={() => void onDevContinue()}
           className="flex h-11 w-full items-center justify-center gap-3 rounded-lg border border-[#dadce0] bg-white px-4 text-sm font-medium text-[#3c4043] shadow-sm transition hover:bg-[#f8f9fa] disabled:opacity-60"
-          data-testid="google-sign-in-fallback"
+          data-testid="google-sign-in-dev-primary"
         >
           <GoogleGIcon />
-          {label}
+          {label} (local)
         </button>
-      )}
-      {allowDevBypass && clientId ? (
+      ) : null}
+      {canUseDev && canUseGis ? (
         <button
           type="button"
           disabled={disabled || busy}

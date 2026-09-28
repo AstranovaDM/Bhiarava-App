@@ -47,9 +47,10 @@ export const palette = {
   secondaryForeground: '#F7FBF8',
   secondaryContainer: '#D4E4DA',
 
-  gold: '#E4AD3C',
-  goldForeground: '#462400',
-  goldContainer: '#FBE6B3',
+  /** @deprecated Unapproved decorative gold — aliased to green-derived neutral. Prefer primary/luminous. */
+  gold: '#3D5A4A',
+  goldForeground: '#F7FBF8',
+  goldContainer: '#D4E4DA',
 
   foreground: '#0F1F17',
   mutedForeground: '#5A6B62',
@@ -57,6 +58,7 @@ export const palette = {
 
   destructive: '#D02B31',
   destructiveForeground: '#FFF9F8',
+  /** Semantic warning only — not brand decorative gold. */
   warning: '#DA950B',
   warningForeground: '#3C2200',
   success: '#00884B',
@@ -81,9 +83,10 @@ export const darkPalette = {
   secondary: '#8FB89F',
   secondaryForeground: '#04110A',
   secondaryContainer: '#1B3C2C',
-  gold: '#E9BE57',
-  goldForeground: '#331700',
-  goldContainer: '#684600',
+  /** @deprecated Unapproved decorative gold — aliased to green-derived neutral. */
+  gold: '#8FB89F',
+  goldForeground: '#04110A',
+  goldContainer: '#1B3C2C',
   foreground: '#EDF4EF',
   mutedForeground: '#98A89E',
   outlineVariant: '#4A6656',
@@ -92,7 +95,7 @@ export const darkPalette = {
 export const chart = {
   1: brand.primary,
   2: '#3D5A4A',
-  3: palette.gold,
+  3: '#6A9A7E',
   4: brand.luminous,
   5: '#1A4D32',
 } as const;
@@ -161,7 +164,7 @@ export const colors = {
   brand: {
     primary: brand.primary,
     luminous: brand.luminous,
-    accent: palette.gold,
+    accent: brand.luminous,
     danger: palette.destructive,
   },
   ...palette,
@@ -178,7 +181,8 @@ export const gradients = {
   primary: `linear-gradient(135deg, ${brand.primary} 0%, ${brand.primary} 35%, ${brand.luminous} 130%)`,
   luminous: `linear-gradient(135deg, ${brand.luminous}, ${brand.primary})`,
   flow: `linear-gradient(135deg, ${palette.secondary}, #6A9A7E)`,
-  gold: 'linear-gradient(135deg, #CC8730, #F2CE59)',
+  /** @deprecated Prefer `gradients.luminous`. Kept as alias — no decorative gold. */
+  gold: `linear-gradient(135deg, ${brand.primary}, ${brand.luminous})`,
 } as const;
 
 /* -------------------------------- typography ------------------------------- */

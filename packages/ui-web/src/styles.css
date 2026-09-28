@@ -403,11 +403,12 @@
 }
 
 @utility gradient-gold {
-  background-image: var(--gradient-gold);
+  /* Deprecated decorative gold — maps to luminous brand green. */
+  background-image: var(--gradient-luminous);
 }
 
 @utility text-gradient-gold {
-  background-image: var(--gradient-gold);
+  background-image: var(--gradient-luminous);
   background-clip: text;
   color: transparent;
 }
@@ -419,10 +420,11 @@
 }
 
 @utility hairline-gold {
+  /* Deprecated name — green hairline, not decorative gold. */
   background-image: linear-gradient(
     90deg,
     transparent,
-    color-mix(in oklab, var(--gold) 65%, transparent),
+    color-mix(in oklab, var(--primary) 55%, transparent),
     transparent
   );
 }

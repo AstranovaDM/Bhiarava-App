@@ -33,7 +33,7 @@ export function Field({
       <span className="flex items-baseline gap-1.5 pb-1 text-[11px] font-semibold tracking-[0.1em] text-muted-foreground uppercase">
         {label}
         {required && (
-          <span aria-hidden className="text-gold">
+          <span aria-hidden className="text-primary">
             *
           </span>
         )}

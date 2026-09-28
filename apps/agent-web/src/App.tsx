@@ -21,7 +21,7 @@ import type { PublicUser } from '@bhairava/api-client';
 import { api, tokens } from './api';
 import { appPath, LOGO_SRC } from './basePath';
 import { SessionContext, UNREAD_CAP, type AgentSession } from './session';
-import { LoginPage, AgentOnboardingPage } from './pages/Login';
+import { LoginPage, AgentOnboardingPage, AgentMpinPage } from './pages/Login';
 import { HomePage } from './pages/Home';
 import { PlotDetailPage, ProjectDetailPage, ProjectsPage } from './pages/Projects';
 import { BookingsPage, CustomersPage, LeadsPage, ReservationsPage, VisitsPage } from './pages/Sales';
@@ -144,7 +144,9 @@ function AgentShell() {
         if (!cancelled) {
           setUser(res.user);
           if ((res.user as any).needsProfile || (res.user as any).profileComplete === false) {
-            location.href = '/onboarding';
+            location.href = appPath('/onboarding');
+          } else if ((res.user as any).needsMpin) {
+            location.href = appPath('/mpin');
           }
         }
       })
@@ -189,6 +191,7 @@ export function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/onboarding" element={<AgentOnboardingPage />} />
+      <Route path="/mpin" element={<AgentMpinPage />} />
       <Route element={<AuthGate />}>
         <Route index element={<HomePage />} />
         <Route path="/projects" element={<ProjectsPage />} />

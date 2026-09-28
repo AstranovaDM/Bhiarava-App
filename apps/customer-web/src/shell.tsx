@@ -100,7 +100,9 @@ function AuthenticatedShell() {
         if (!cancelled) {
           setUser(res.user);
           if (res.user.needsProfile || res.user.profileComplete === false) {
-            location.href = '/onboarding';
+            location.href = appPath('/onboarding');
+          } else if (res.user.needsMpin) {
+            location.href = appPath('/mpin');
           }
         }
       })

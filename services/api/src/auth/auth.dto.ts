@@ -85,14 +85,54 @@ export class CompleteAgentProfileDto {
   @MinLength(1)
   name!: string;
 
-  @IsOptional()
+  /** Required — agents cannot activate without a normalized Indian mobile. */
   @IsString()
-  phone?: string;
+  @MinLength(10)
+  phone!: string;
 
-  @IsOptional()
+  /** Required city/region for agent profile. */
   @IsString()
-  region?: string;
+  @MinLength(1)
+  region!: string;
 
   @IsBoolean()
   termsAccepted!: boolean;
+}
+
+/** Setup / reset body — confirm required. Never logged. */
+export class MpinSetupDto {
+  @IsString()
+  mpin!: string;
+
+  @IsString()
+  confirmMpin!: string;
+}
+
+export class MpinLoginDto {
+  /** Google-linked email or stored mobile — existence never confirmed to client. */
+  @IsString()
+  @MinLength(1)
+  identifier!: string;
+
+  @IsString()
+  mpin!: string;
+
+  /** Portal role — Customer cannot use Agent identity and vice versa. */
+  @IsString()
+  role!: string;
+}
+
+export class MpinResetDto {
+  /** Fresh Google ID token proving identity before MPIN change. */
+  @IsString()
+  idToken!: string;
+
+  @IsString()
+  mpin!: string;
+
+  @IsString()
+  confirmMpin!: string;
+
+  @IsString()
+  role!: string;
 }

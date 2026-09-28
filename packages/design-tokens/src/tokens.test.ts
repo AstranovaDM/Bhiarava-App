@@ -11,6 +11,7 @@ import {
   PLOT_STATUS_KEYS,
   brand,
   cssVar,
+  gradients,
   palette,
   plotStatusFill,
   plotStatusInk,
@@ -55,6 +56,7 @@ test('tokens.css matches TS surfaces and palette', () => {
   assert.equal(rootVar('--primary-luminous'), brand.luminous);
   assert.equal(rootVar('--secondary'), palette.secondary);
   assert.equal(rootVar('--gold'), palette.gold);
+  assert.ok(!/#E4AD3C|#FBE6B3|#CC8730|#F2CE59/i.test(palette.gold + gradients.gold));
   assert.equal(rootVar('--destructive'), palette.destructive);
   assert.equal(rootVar('--foreground'), palette.foreground);
   assert.equal(rootVar('--muted-foreground'), palette.mutedForeground);

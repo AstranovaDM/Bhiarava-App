@@ -11,6 +11,10 @@ export type PublicUser = {
   status: string;
   profileComplete?: boolean;
   needsProfile?: boolean;
+  /** True when Customer/Agent has set a 4-digit MPIN. */
+  mpinSet?: boolean;
+  /** Force MPIN setup before app entry (profile complete, MPIN missing). */
+  needsMpin?: boolean;
 };
 
 export type AuthSession = {

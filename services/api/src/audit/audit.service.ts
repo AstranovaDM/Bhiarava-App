@@ -99,6 +99,8 @@ export class AuditService {
           key.includes('token') ||
           key.includes('secret') ||
           key.includes('authorization') ||
+          key.includes('mpin') ||
+          key === 'pin' ||
           key === 'pan' ||
           key === 'aadhaar' ||
           key === 'aadhar' ||

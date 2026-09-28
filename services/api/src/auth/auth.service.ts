@@ -278,7 +278,12 @@ export class AuthService {
     roleCode: string;
     status: string;
     profileCompletedAt?: Date | null;
+    mpinSetAt?: Date | null;
   }) {
+    const profileComplete = Boolean(user.profileCompletedAt);
+    const role = String(user.roleCode || '').toUpperCase();
+    const mpinEligible = role === 'CUSTOMER' || role === 'AGENT';
+    const needsMpin = mpinEligible && profileComplete && !user.mpinSetAt;
     return {
       id: user.id,
       organizationId: user.organizationId,
@@ -288,8 +293,10 @@ export class AuthService {
       role: user.roleCode,
       roleCode: user.roleCode,
       status: user.status,
-      profileComplete: Boolean(user.profileCompletedAt),
-      needsProfile: !user.profileCompletedAt,
+      profileComplete,
+      needsProfile: !profileComplete,
+      mpinSet: Boolean(user.mpinSetAt),
+      needsMpin,
     };
   }
 
