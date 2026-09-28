@@ -57,7 +57,12 @@ export function LayoutsPage() {
         setPlots(Array.isArray(p) ? p : []);
         const first = Array.isArray(l) ? l[0] : null;
         const meta = first?.metaJson as AnyRow | undefined;
-        setLayoutImageUrl((meta?.publicUrl as string) || (meta?.url as string) || null);
+        setLayoutImageUrl(
+          (first?.downloadUrl as string) ||
+            (meta?.publicUrl as string) ||
+            (meta?.url as string) ||
+            null,
+        );
       })
       .catch((e) => setErr(errMsg(e)));
   }, [projectId]);

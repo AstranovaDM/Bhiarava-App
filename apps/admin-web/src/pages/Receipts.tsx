@@ -15,6 +15,7 @@ import {
 import { api } from '../api';
 import { Mono, Muted, StatusChip } from '../components/common';
 import { DASH, display, errMsg, formatDateTime, matchesQuery, shortId, useAsyncList, withIds, type AnyRow } from '../lib/data';
+import { LOGO_SRC } from '../basePath';
 
 type Row = AnyRow & { id: string | number };
 
@@ -131,7 +132,7 @@ export function ReceiptDetailPage() {
       <Panel className="receipt-sheet mb-10 sm:p-10" id="receipt-print">
         <div className="receipt-head">
           <div>
-            <BrandWordmark size={40} title="Bhairava Land Ventures" subtitle="Hyderabad, Telangana · RERA registered" className="receipt-brand" />
+            <BrandWordmark size={40} title="Bhairava Land Ventures" subtitle="Hyderabad, Telangana · RERA registered" className="receipt-brand" logoSrc={LOGO_SRC} />
           </div>
           <div className="receipt-meta text-right">
             <div className="k">Receipt No</div>

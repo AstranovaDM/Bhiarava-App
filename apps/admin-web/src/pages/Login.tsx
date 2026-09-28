@@ -4,6 +4,7 @@ import { Lock } from 'lucide-react';
 import { BrandLogo, Btn, Field, Panel, TextInput } from '@bhairava/ui-web';
 import { api, tokens } from '../api';
 import { Notice } from '../components/common';
+import { LOGO_SRC } from '../basePath';
 import { errMsg } from '../lib/data';
 
 export function LoginPage() {
@@ -38,7 +39,7 @@ export function LoginPage() {
 
       <div className="rise relative w-full max-w-sm">
         <div className="flex flex-col items-center pb-8 text-center">
-          <BrandLogo size={64} className="rounded-2xl" />
+          <BrandLogo size={64} className="rounded-2xl" logoSrc={LOGO_SRC} />
           <h1 className="pt-6 font-display text-2xl font-semibold">Sign in to Bhairava</h1>
           <p className="pt-2 text-sm text-muted-foreground">Admin · Land Sales OS</p>
         </div>

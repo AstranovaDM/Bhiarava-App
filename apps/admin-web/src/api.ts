@@ -1,4 +1,5 @@
 import { createApiClient, type TokenStore } from '@bhairava/api-client';
+import { appPath, isAppLoginPath } from './basePath';
 
 const ACCESS = 'bhairava.admin.access';
 const REFRESH = 'bhairava.admin.refresh';
@@ -23,6 +24,6 @@ export const api = createApiClient({
   tokens,
   onUnauthorized: () => {
     void tokens.clear();
-    if (location.pathname !== '/login') location.href = '/login';
+    if (!isAppLoginPath(location.pathname)) location.href = appPath('/login');
   },
 });

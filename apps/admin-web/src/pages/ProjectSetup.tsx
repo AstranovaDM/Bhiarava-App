@@ -62,6 +62,7 @@ import {
 } from '../components/common';
 import { DASH, display, errMsg, formatDate, formatRupees, humanize, useAsyncList, withIds, type AnyRow } from '../lib/data';
 import { DocumentsPage } from './Documents';
+import { PlotCanvas, type CanvasPlot } from '../PlotCanvas';
 import { ComingSoonPanel } from './project-workspace/ComingSoonPanel';
 import { FinanceTab } from './project-workspace/FinanceTab';
 import { SalesTab } from './project-workspace/SalesTab';
@@ -135,6 +136,25 @@ export function ProjectWorkspacePage() {
     () => (projectId ? (api.bookings.list({ projectId }) as Promise<AnyRow[]>) : Promise.resolve([])),
     [projectId],
   );
+
+  const [layoutImageUrl, setLayoutImageUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!projectId) { setLayoutImageUrl(null); return; }
+    api.layouts
+      .list(projectId)
+      .then((rows) => {
+        const list = Array.isArray(rows) ? rows : [];
+        const first = list[0] as AnyRow | undefined;
+        const meta = first?.metaJson as AnyRow | undefined;
+        setLayoutImageUrl(
+          (first?.downloadUrl as string) ||
+            (meta?.publicUrl as string) ||
+            (meta?.url as string) ||
+            null,
+        );
+      })
+      .catch(() => setLayoutImageUrl(null));
+  }, [projectId, version]);
 
   const reload = useCallback(() => {
     if (!projectId) return;
@@ -765,29 +785,47 @@ export function ProjectWorkspacePage() {
                   </LinkBtn>
                 }
               >
-                Master plans
+                Interactive plot canvas
               </SectionTitle>
-              {layouts.length === 0 ? (
+              {layouts.length === 0 && inventory.total === 0 ? (
                 <EmptyState compact icon={MapIcon} title="No master plan yet" description="Upload a layout and map plot polygons in the layout editor." />
               ) : (
-                <ul className="grid gap-2 sm:grid-cols-2">
-                  {layouts.map((l) => (
-                    <li key={l.id}>
-                      <Link to={layoutHref} className="lift flex items-center gap-3 rounded-xl bg-surface-low p-3 transition-colors hover:bg-surface-c">
-                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-surface-lowest text-primary shadow-ambient">
-                          <MapIcon className="h-4 w-4" />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-medium">{display(l.name)}</span>
-                          <Muted className="block truncate">
-                            {l.widthPx && l.heightPx ? `${l.widthPx}×${l.heightPx}` : 'Size unknown'} · {l.imageKey ? 'Image linked' : 'No image'}
-                          </Muted>
-                        </span>
-                        <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
+                <>
+                  <PlotCanvas
+                    className="plot-canvas-host"
+                    readOnly
+                    tool="select"
+                    layoutImageUrl={layoutImageUrl}
+                    plots={(plots.rows as AnyRow[]).map((pl): CanvasPlot => ({
+                      id: String(pl.id),
+                      number: String(pl.number || pl.plotNumber || ''),
+                      status: String(pl.status || 'AVAILABLE'),
+                      areaSqYd: pl.areaSqYd,
+                      facing: pl.facing,
+                      polygonJson: pl.polygonJson,
+                    }))}
+                  />
+                  {layouts.length > 0 ? (
+                    <ul className="grid gap-2 pt-4 sm:grid-cols-2">
+                      {layouts.map((l) => (
+                        <li key={l.id}>
+                          <Link to={layoutHref} className="lift flex items-center gap-3 rounded-xl bg-surface-low p-3 transition-colors hover:bg-surface-c">
+                            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-surface-lowest text-primary shadow-ambient">
+                              <MapIcon className="h-4 w-4" />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-sm font-medium">{display(l.name)}</span>
+                              <Muted className="block truncate">
+                                {l.widthPx && l.heightPx ? `${l.widthPx}x${l.heightPx}` : 'Size unknown'} · {l.imageKey ? 'Image linked' : 'No image'}
+                              </Muted>
+                            </span>
+                            <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </>
               )}
             </Panel>
             <Panel>

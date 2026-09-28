@@ -14,6 +14,7 @@ import { AsyncSection } from '../components';
 import { formatArea, formatDate, formatDateTime, formatPaise, paymentMethodLabel } from '../lib/format';
 import type { ReceiptDetail, ReceiptListItem } from '../lib/types';
 import { useApi } from '../lib/use-api';
+import { LOGO_SRC } from '../basePath';
 
 export function ReceiptsPage() {
   const state = useApi(() => api.receipts.list() as unknown as Promise<ReceiptListItem[]>);
@@ -81,7 +82,7 @@ export function ReceiptDetailPage() {
           <article className="receipt-sheet" id="receipt-print">
             <header className="receipt-head">
               <div className="flex items-center gap-3">
-                <BrandLogo size={48} />
+                <BrandLogo size={48} logoSrc={LOGO_SRC} />
                 <div>
                   <p className="receipt-brand">Bhairava Land Ventures</p>
                   <p className="text-xs text-muted-foreground">Hyderabad, Telangana · RERA registered</p>

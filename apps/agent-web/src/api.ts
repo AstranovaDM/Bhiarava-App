@@ -1,4 +1,5 @@
 import { createApiClient, createMemoryTokenStore } from '@bhairava/api-client';
+import { appPath, isAppLoginPath } from './basePath';
 
 /**
  * In-memory access token only. Refresh relies on the HTTP-only `bhairava_refresh`
@@ -11,7 +12,7 @@ export const api = createApiClient({
   tokens,
   onUnauthorized: () => {
     void tokens.clear();
-    if (location.pathname !== '/login') location.href = '/login';
+    if (!isAppLoginPath(location.pathname)) location.href = appPath('/login');
   },
 });
 

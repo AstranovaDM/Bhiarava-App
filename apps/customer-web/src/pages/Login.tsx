@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Btn, BrandWordmark, GoogleSignInButton, Panel } from '@bhairava/ui-web';
 import { acceptSession, api } from '../api';
+import { LOGO_SRC } from '../basePath';
 
 const GOOGLE_CLIENT_ID = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID_CUSTOMER
   || (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID
@@ -61,7 +62,7 @@ export function LoginPage() {
 
       <div className="rise relative w-full max-w-md">
         <div className="flex justify-center pb-8">
-          <BrandWordmark size={52} title="Bhairava" subtitle="Customer portal" />
+          <BrandWordmark size={52} title="Bhairava" subtitle="Customer portal" logoSrc={LOGO_SRC} />
         </div>
         <Panel className="sm:p-8">
           <h1 className="font-display text-2xl font-semibold tracking-[-0.02em]">Continue with Google</h1>

@@ -112,6 +112,7 @@ export type LayoutSummary = {
   projectId: string;
   name: string;
   imageKey: string | null;
+  downloadUrl?: string | null;
   widthPx: number | null;
   heightPx: number | null;
   metaJson: unknown;

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
 import { Btn, BrandWordmark, Field, GoogleSignInButton, Panel, TextInput } from '@bhairava/ui-web';
 import { acceptSession, api } from '../api';
+import { LOGO_SRC } from '../basePath';
 import { Notice } from '../components/RecordList';
 import { errorMessage } from '../lib/format';
 
@@ -36,12 +37,18 @@ export function LoginPage() {
   );
 
   return (
-    <div className="grid min-h-dvh place-items-center bg-background px-4 py-10">
-      <div className="w-full max-w-md">
-        <div className="mb-6 flex justify-center">
-          <BrandWordmark size={44} title="Bhairava" subtitle="Agent portal" />
+    <div className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-background px-5 py-12">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-40 left-1/2 h-[520px] w-[720px] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--secondary)_22%,transparent),transparent)]"
+      />
+      <div aria-hidden className="hairline-gold pointer-events-none absolute bottom-0 left-1/2 h-px w-[420px] -translate-x-1/2" />
+
+      <div className="rise relative w-full max-w-md">
+        <div className="flex justify-center pb-8">
+          <BrandWordmark size={52} title="Bhairava" subtitle="Agent portal" logoSrc={LOGO_SRC} />
         </div>
-        <Panel className="rise">
+        <Panel className="rise sm:p-8">
           <h1 className="font-display text-2xl font-semibold tracking-[-0.03em]">Continue with Google</h1>
           <p className="pt-1 text-sm text-muted-foreground">
             Open signup — no Admin approval. Complete your profile to get an agent code and go Active.
