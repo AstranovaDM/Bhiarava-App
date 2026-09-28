@@ -56,7 +56,7 @@ export function LoginPage() {
         await acceptSession(s);
         nav(nextPath(s.user as any));
       } catch (ex) {
-        setErr(userFacingError(ex, { context: 'auth', fallback: 'Google sign-in failed' }));
+        setErr(userFacingError(ex, { context: 'agent_auth' }));
       } finally {
         setBusy(false);
       }
@@ -77,7 +77,7 @@ export function LoginPage() {
       await acceptSession(s);
       nav(nextPath(s.user as any));
     } catch (ex) {
-      setErr(userFacingError(ex, { context: 'mpin_login', fallback: 'Sign-in failed' }));
+      setErr(userFacingError(ex, { context: 'mpin_login' }));
     } finally {
       setBusy(false);
     }

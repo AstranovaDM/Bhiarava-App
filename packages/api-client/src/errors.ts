@@ -1,9 +1,3 @@
-/**
- * Global API failure → user-facing category + copy.
- * `.message` on ApiError is always safe for Customer/Agent UI.
- * Diagnostics stay on separate fields for Admin diagnostic screens only.
- */
-
 export type ApiErrorCategory =
   | 'VALIDATION_ERROR'
   | 'AUTH_ERROR'
@@ -13,11 +7,19 @@ export type ApiErrorCategory =
   | 'DUPLICATE_CUSTOMER'
   | 'INVITE_INVALID'
   | 'SESSION_EXPIRED'
+  | 'ROLE_MISMATCH'
+  | 'ACCOUNT_UNAVAILABLE'
+  | 'ACCESS_DENIED'
   | 'SERVER_ERROR'
   | 'NETWORK_ERROR'
   | 'UNKNOWN_ERROR';
 
-export type UserFacingErrorContext = 'default' | 'mpin_save' | 'mpin_login' | 'auth';
+export type UserFacingErrorContext =
+  | 'default'
+  | 'mpin_save'
+  | 'mpin_login'
+  | 'auth'
+  | 'agent_auth';
 
 export const USER_ERROR_COPY = {
   VALIDATION_ERROR: 'Please check your details and try again.',
@@ -29,6 +31,15 @@ export const USER_ERROR_COPY = {
   DUPLICATE_CUSTOMER: 'An account with these details already exists. Please sign in instead.',
   INVITE_INVALID: 'This invite link is invalid or has expired.',
   SESSION_EXPIRED: 'Your session has expired. Please sign in again.',
+  ROLE_MISMATCH: 'This Google account cannot sign in to this portal.',
+  ACCOUNT_UNAVAILABLE: 'Your account is currently unavailable. Please contact Bhairava.',
+  ACCESS_DENIED: 'You don’t have access to this account.',
+  /** Agent portal — wrong portal / non-Agent Google account. */
+  AGENT_ROLE_MISMATCH: 'This Google account is not registered as an Agent.',
+  /** Agent portal — suspended / disabled Agent. */
+  AGENT_ACCOUNT_UNAVAILABLE: 'Your Agent account is currently unavailable. Please contact Bhairava.',
+  /** Agent portal — generic access denied. */
+  AGENT_ACCESS_DENIED: 'You don’t have access to this Agent account.',
   SERVER_ERROR: 'Something went wrong. Please try again.',
   NETWORK_ERROR: 'Network problem. Please check your connection and try again.',
   UNKNOWN_ERROR: 'Something went wrong. Please try again.',
@@ -43,11 +54,13 @@ export const UNSAFE_USER_MESSAGE_PATTERNS = [
   /\/api\//i,
   /\bBad Request\b/i,
   /\bInternal Server Error\b/i,
+  /\bForbidden\b/i,
+  /\b403\b/,
   /^(GET|POST|PUT|PATCH|DELETE)\s+\//i,
   /→\s*\d{3}\b/,
   /^\s*\{/,
   /"path"\s*:/,
-  /Prisma|NestJS|Exception/i,
+  /Axios|NestJS|Exception/i,
   /at\s+\S+\s+\(/, // stack frames
 ] as const;
 
@@ -230,6 +243,31 @@ export function categorizeFromStatusAndMessage(
     return 'MPIN_LOCKED';
   }
 
+  // Portal / role / account access (403) — never treat as generic AUTH "Sign-in failed".
+  if (
+    c === 'ROLE_MISMATCH' ||
+    msg.includes('not an agent login') ||
+    msg.includes('not a customer login') ||
+    msg.includes('not registered as an agent') ||
+    msg.includes('wrong portal')
+  ) {
+    return 'ROLE_MISMATCH';
+  }
+
+  if (
+    c === 'ACCOUNT_UNAVAILABLE' ||
+    msg.includes('account suspended') ||
+    msg.includes('account not active') ||
+    (msg.includes('disabled') && msg.includes('account')) ||
+    (msg.includes('suspended') && msg.includes('account'))
+  ) {
+    return 'ACCOUNT_UNAVAILABLE';
+  }
+
+  if (status === 403 || c === 'ACCESS_DENIED' || msg.includes('forbidden') || msg.includes('access denied')) {
+    return 'ACCESS_DENIED';
+  }
+
   if (status === 400 || status === 422) {
     if (msg.includes('mpin must be exactly') || msg.includes('4 digits')) {
       return 'VALIDATION_ERROR';
@@ -261,6 +299,15 @@ export function userMessageForCategory(
     if (category === 'AUTH_ERROR' || category === 'MPIN_INVALID') return USER_ERROR_COPY.MPIN_INVALID;
     if (category === 'MPIN_LOCKED') return USER_ERROR_COPY.MPIN_LOCKED;
     if (category === 'SESSION_EXPIRED') return USER_ERROR_COPY.SESSION_EXPIRED;
+    if (category === 'ACCOUNT_UNAVAILABLE') return USER_ERROR_COPY.ACCOUNT_UNAVAILABLE;
+    if (category === 'ACCESS_DENIED') return USER_ERROR_COPY.ACCESS_DENIED;
+  }
+  if (context === 'agent_auth') {
+    if (category === 'ROLE_MISMATCH') return USER_ERROR_COPY.AGENT_ROLE_MISMATCH;
+    if (category === 'ACCOUNT_UNAVAILABLE') return USER_ERROR_COPY.AGENT_ACCOUNT_UNAVAILABLE;
+    if (category === 'ACCESS_DENIED') return USER_ERROR_COPY.AGENT_ACCESS_DENIED;
+    if (category === 'SESSION_EXPIRED') return USER_ERROR_COPY.SESSION_EXPIRED;
+    if (category === 'AUTH_ERROR') return USER_ERROR_COPY.AUTH_ERROR;
   }
   if (context === 'auth' && category === 'AUTH_ERROR') {
     return USER_ERROR_COPY.AUTH_ERROR;
