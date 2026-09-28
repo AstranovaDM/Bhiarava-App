@@ -181,8 +181,8 @@ export function createApiClient(opts: ApiClientOptions) {
         ),
       completeAgentProfile: (body: {
         name: string;
-        phone?: string;
-        region?: string;
+        phone: string;
+        region: string;
         termsAccepted: boolean;
       }) =>
         request<{ user: PublicUser; agentId: string | null; agentCode: string | null; skipped: boolean }>(

@@ -10,10 +10,12 @@ import { RoleCode, UserAccountStatus } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import {
   BHAIRAVA_DIRECT_CODE,
+  decideInviteHintMatch,
   decideMobileOnlyDup,
   generateAgentCode,
   needsProfileCompletion,
   normalizePhoneIn,
+  preserveOriginalAttribution,
   resolveDirectAppSalesOwner,
   resolveInviteSalesOwner,
 } from '@bhairava/domain';
@@ -223,6 +225,34 @@ export class GoogleAuthService {
       },
     });
 
+    // Early invite email-hint binding for new customers (phone checked at profile complete).
+    if (role === 'CUSTOMER' && dto.inviteToken) {
+      const { hashToken } = await import('./crypto.util');
+      const invite = await this.prisma.customerInvite.findUnique({
+        where: { tokenHash: hashToken(dto.inviteToken) },
+      });
+      if (invite && !invite.revokedAt && !invite.claimedAt && invite.expiresAt.getTime() > Date.now()) {
+        const hint = decideInviteHintMatch({
+          emailHint: invite.emailHint,
+          phoneHintNormalized: null, // phone not known yet
+          claimantEmail: email,
+          claimantMobileNormalized: null,
+        });
+        if (!hint.ok) {
+          await this.audit.log({
+            organizationId,
+            actorId: user.id,
+            action: 'invite.hint_mismatch',
+            entityType: 'CustomerInvite',
+            entityId: invite.id,
+            metaJson: { code: hint.code, stage: 'google_continue' },
+            ip: meta.ip,
+          });
+          throw new ConflictException(hint.message);
+        }
+      }
+    }
+
     // Stash invite token claim intent in audit; actual claim happens on profile complete.
     if (role === 'CUSTOMER' && dto.inviteToken) {
       await this.audit.log({
@@ -322,6 +352,13 @@ export class GoogleAuthService {
         phoneNormalized: mobile,
         userId: { not: user.id },
       },
+      select: {
+        id: true,
+        userId: true,
+        agentId: true,
+        attributionSource: true,
+        invitedByAgentId: true,
+      },
     });
     if (existingCustomerByPhone?.userId) {
       throw new ConflictException('This mobile number cannot be used for this account.');
@@ -334,12 +371,41 @@ export class GoogleAuthService {
       const tokenHash = hashToken(dto.inviteToken);
       const invite = await this.prisma.customerInvite.findUnique({ where: { tokenHash } });
       if (
-        invite &&
-        !invite.revokedAt &&
-        !invite.claimedAt &&
-        invite.expiresAt.getTime() > Date.now() &&
-        invite.organizationId === user.organizationId
+        !invite ||
+        invite.revokedAt ||
+        invite.claimedAt ||
+        invite.expiresAt.getTime() <= Date.now() ||
+        invite.organizationId !== user.organizationId
       ) {
+        // Invalid invite — continue as DIRECT_APP without leaking invite/agent PII.
+        await this.audit.log({
+          organizationId: user.organizationId,
+          actorId: user.id,
+          action: 'invite.claim_rejected',
+          entityType: 'CustomerInvite',
+          entityId: invite?.id,
+          metaJson: { reason: 'invalid_or_expired' },
+          ip: meta.ip,
+        });
+      } else {
+        const hint = decideInviteHintMatch({
+          emailHint: invite.emailHint,
+          phoneHintNormalized: invite.phoneHintNormalized,
+          claimantEmail: user.email,
+          claimantMobileNormalized: mobile,
+        });
+        if (!hint.ok) {
+          await this.audit.log({
+            organizationId: user.organizationId,
+            actorId: user.id,
+            action: 'invite.hint_mismatch',
+            entityType: 'CustomerInvite',
+            entityId: invite.id,
+            metaJson: { code: hint.code },
+            ip: meta.ip,
+          });
+          throw new ConflictException(hint.message);
+        }
         inviteAgentId = invite.invitedByAgentId;
         inviteId = invite.id;
       }
@@ -380,6 +446,12 @@ export class GoogleAuthService {
         if (!canLink) {
           throw new ConflictException('This mobile number cannot be used for this account.');
         }
+        const retained = preserveOriginalAttribution({
+          existingAttributionSource: existingCustomerByPhone.attributionSource,
+          existingInvitedByAgentId: existingCustomerByPhone.invitedByAgentId,
+          incomingAttributionSource: attribution.attributionSource,
+          incomingInvitedByAgentId: invitedByAgentId,
+        });
         customer = await tx.customer.update({
           where: { id: existingCustomerByPhone.id },
           data: {
@@ -391,11 +463,11 @@ export class GoogleAuthService {
             city: dto.city,
             preferredProjectId: dto.preferredProjectId,
             agentId: attribution.agentId,
-            invitedByAgentId,
-            attributionSource: attribution.attributionSource,
+            invitedByAgentId: retained.invitedByAgentId,
+            attributionSource: retained.attributionSource as any,
             referralCode: dto.referralCode,
             referralNote: dto.referralNote,
-            source: attribution.attributionSource,
+            source: String(retained.attributionSource),
           },
         });
       } else if (!customer) {
@@ -452,15 +524,17 @@ export class GoogleAuthService {
 
   async completeAgentProfile(
     actor: AuthPrincipal,
-    dto: { name: string; phone?: string; region?: string; termsAccepted: boolean },
+    dto: { name: string; phone: string; region: string; termsAccepted: boolean },
     meta: { ip?: string },
   ) {
     if (actor.roleCode !== 'AGENT') throw new ForbiddenException('Agent profile only');
     if (!dto.termsAccepted) throw new BadRequestException('Terms must be accepted');
     const name = dto.name?.trim();
     if (!name) throw new BadRequestException('Name is required');
-    const phone = dto.phone ? normalizePhoneIn(dto.phone) : null;
-    if (dto.phone && !phone) throw new BadRequestException('Invalid mobile');
+    const region = dto.region?.trim();
+    if (!region) throw new BadRequestException('City / region is required');
+    const phone = normalizePhoneIn(dto.phone);
+    if (!phone) throw new BadRequestException('Valid Indian mobile is required');
 
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: actor.userId } });
     if (user.profileCompletedAt) {
@@ -473,23 +547,21 @@ export class GoogleAuthService {
       };
     }
 
-    if (phone) {
-      const existingMobile = await this.prisma.user.findFirst({
-        where: { organizationId: user.organizationId, mobile: phone, NOT: { id: user.id } },
-      });
-      const dup = decideMobileOnlyDup({
-        normalizedMobile: phone,
-        existingOwner: existingMobile
-          ? {
-              userId: existingMobile.id,
-              googleSub: existingMobile.googleSub,
-              email: existingMobile.email,
-            }
-          : null,
-        claimant: { userId: user.id, googleSub: user.googleSub, email: user.email },
-      });
-      if (!dup.ok) throw new ConflictException(dup.message);
-    }
+    const existingMobile = await this.prisma.user.findFirst({
+      where: { organizationId: user.organizationId, mobile: phone, NOT: { id: user.id } },
+    });
+    const dup = decideMobileOnlyDup({
+      normalizedMobile: phone,
+      existingOwner: existingMobile
+        ? {
+            userId: existingMobile.id,
+            googleSub: existingMobile.googleSub,
+            email: existingMobile.email,
+          }
+        : null,
+      claimant: { userId: user.id, googleSub: user.googleSub, email: user.email },
+    });
+    if (!dup.ok) throw new ConflictException(dup.message);
 
     const existingCodes = new Set(
       (
@@ -507,7 +579,7 @@ export class GoogleAuthService {
         where: { id: user.id },
         data: {
           displayName: name,
-          mobile: phone ?? user.mobile,
+          mobile: phone,
           profileCompletedAt: now,
           termsAcceptedAt: now,
           status: UserAccountStatus.ACTIVE,
@@ -517,8 +589,8 @@ export class GoogleAuthService {
         where: { userId: user.id },
         update: {
           name,
-          phone: phone ?? undefined,
-          region: dto.region,
+          phone,
+          region,
           status: 'Active',
           email: user.email,
         },
@@ -527,8 +599,8 @@ export class GoogleAuthService {
           userId: user.id,
           code,
           name,
-          phone: phone ?? undefined,
-          region: dto.region,
+          phone,
+          region,
           email: user.email,
           status: 'Active',
           isSystem: false,

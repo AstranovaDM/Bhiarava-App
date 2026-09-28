@@ -49,6 +49,8 @@ export {
   normalizePhoneIn,
   decideMobileOnlyDup,
   decidePhoneStealAttempt,
+  decideInviteHintMatch,
+  preserveOriginalAttribution,
   resolveDirectAppSalesOwner,
   resolveInviteSalesOwner,
   resolveSiteVisitAssignee,

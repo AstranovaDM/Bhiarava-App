@@ -146,7 +146,7 @@ export function Metric({
               className={cn(
                 "numeric inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-semibold",
                 accent
-                  ? "bg-primary-foreground/12 text-gold"
+                  ? "bg-primary-foreground/12 text-primary-luminous"
                   : delta.startsWith("-")
                     ? "bg-destructive/10 text-destructive"
                     : "bg-primary/10 text-primary",

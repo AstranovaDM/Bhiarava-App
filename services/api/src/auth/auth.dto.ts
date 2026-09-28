@@ -85,13 +85,15 @@ export class CompleteAgentProfileDto {
   @MinLength(1)
   name!: string;
 
-  @IsOptional()
+  /** Required — agents cannot activate without a normalized Indian mobile. */
   @IsString()
-  phone?: string;
+  @MinLength(10)
+  phone!: string;
 
-  @IsOptional()
+  /** Required city/region for agent profile. */
   @IsString()
-  region?: string;
+  @MinLength(1)
+  region!: string;
 
   @IsBoolean()
   termsAccepted!: boolean;

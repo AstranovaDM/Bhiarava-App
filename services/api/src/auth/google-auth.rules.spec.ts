@@ -155,3 +155,130 @@ describe('agent open signup code', () => {
     expect(next.startsWith('AG-')).toBe(true);
   });
 });
+
+describe('correction-pass regressions', () => {
+  const {
+    decideInviteHintMatch,
+    preserveOriginalAttribution,
+  } = require('@bhairava/domain') as typeof import('@bhairava/domain');
+
+  it('rejects agent-style empty mobile at normalize boundary', () => {
+    expect(normalizePhoneIn('')).toBeNull();
+    expect(normalizePhoneIn(undefined)).toBeNull();
+  });
+
+  it('rejects customer empty mobile at normalize boundary', () => {
+    expect(normalizePhoneIn('   ')).toBeNull();
+  });
+
+  it('invite email hint mismatch rejects without PII', () => {
+    const d = decideInviteHintMatch({
+      emailHint: 'owner@agent.example',
+      phoneHintNormalized: null,
+      claimantEmail: 'forwarded@other.example',
+      claimantMobileNormalized: null,
+    });
+    expect(d.ok).toBe(false);
+    if (!d.ok) {
+      expect(d.message).not.toMatch(/owner@|forwarded@|agent\.example/i);
+    }
+  });
+
+  it('invite phone hint mismatch rejects without PII', () => {
+    const d = decideInviteHintMatch({
+      emailHint: null,
+      phoneHintNormalized: '9876543210',
+      claimantEmail: 'ok@x.com',
+      claimantMobileNormalized: '9123456789',
+    });
+    expect(d.ok).toBe(false);
+    if (!d.ok) {
+      expect(d.message).not.toMatch(/9876543210|9123456789/);
+    }
+  });
+
+  it('matching hints allow claim', () => {
+    expect(
+      decideInviteHintMatch({
+        emailHint: 'a@x.com',
+        phoneHintNormalized: '9876543210',
+        claimantEmail: 'a@x.com',
+        claimantMobileNormalized: '9876543210',
+      }).ok,
+    ).toBe(true);
+  });
+
+  it('forwarded invite cannot steal attribution — original retained', () => {
+    const retained = preserveOriginalAttribution({
+      existingAttributionSource: 'AGENT_INVITE',
+      existingInvitedByAgentId: 'agent-original',
+      incomingAttributionSource: 'DIRECT_APP',
+      incomingInvitedByAgentId: null,
+    });
+    expect(retained.retainedOriginal).toBe(true);
+    expect(retained.attributionSource).toBe('AGENT_INVITE');
+    expect(retained.invitedByAgentId).toBe('agent-original');
+  });
+
+  it('DIRECT_APP maps to Bhairava Direct sales owner', () => {
+    expect(resolveDirectAppSalesOwner('direct-id')).toEqual({
+      agentId: 'direct-id',
+      attributionSource: 'DIRECT_APP',
+    });
+    expect(BHAIRAVA_DIRECT_CODE).toBe('BHAIRAVA_DIRECT');
+  });
+
+  it('AGENT_INVITE maps to inviting agent as sales owner + attribution', () => {
+    expect(resolveInviteSalesOwner('agent-invite')).toEqual({
+      agentId: 'agent-invite',
+      invitedByAgentId: 'agent-invite',
+      attributionSource: 'AGENT_INVITE',
+    });
+  });
+});
+
+describe('production Google bypass policy', () => {
+  function resolveAllowDevBypass(env: {
+    VITE_GOOGLE_AUTH_DEV_BYPASS?: string;
+    PROD?: boolean;
+    MODE?: string;
+    clientId?: string;
+  }) {
+    // Mirrors corrected web gate — NEVER `|| !clientId`
+    return (
+      String(env.VITE_GOOGLE_AUTH_DEV_BYPASS || '') === 'true' &&
+      env.PROD !== true &&
+      env.MODE !== 'production'
+    );
+  }
+
+  it('production missing client ID does not enable bypass', () => {
+    expect(
+      resolveAllowDevBypass({
+        VITE_GOOGLE_AUTH_DEV_BYPASS: undefined,
+        PROD: true,
+        MODE: 'production',
+        clientId: '',
+      }),
+    ).toBe(false);
+  });
+
+  it('dev bypass only when flag set and not production', () => {
+    expect(
+      resolveAllowDevBypass({
+        VITE_GOOGLE_AUTH_DEV_BYPASS: 'true',
+        PROD: false,
+        MODE: 'development',
+        clientId: '',
+      }),
+    ).toBe(true);
+    expect(
+      resolveAllowDevBypass({
+        VITE_GOOGLE_AUTH_DEV_BYPASS: 'true',
+        PROD: true,
+        MODE: 'production',
+        clientId: '',
+      }),
+    ).toBe(false);
+  });
+});

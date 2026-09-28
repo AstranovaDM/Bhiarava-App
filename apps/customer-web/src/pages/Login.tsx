@@ -7,8 +7,11 @@ import { LOGO_SRC } from '../basePath';
 const GOOGLE_CLIENT_ID = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID_CUSTOMER
   || (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID
   || '';
-const DEV_BYPASS = String((import.meta as any).env?.VITE_GOOGLE_AUTH_DEV_BYPASS || '') === 'true'
-  && (import.meta as any).env?.PROD !== true;
+/** Dev bypass ONLY when explicitly enabled AND not a production build. Never because client ID is missing. */
+const DEV_BYPASS =
+  String((import.meta as any).env?.VITE_GOOGLE_AUTH_DEV_BYPASS || '') === 'true'
+  && (import.meta as any).env?.PROD !== true
+  && (import.meta as any).env?.MODE !== 'production';
 
 export function LoginPage() {
   const nav = useNavigate();
@@ -17,6 +20,7 @@ export function LoginPage() {
   const [err, setErr] = useState('');
   const [inviteMeta, setInviteMeta] = useState<{ valid: boolean; agentName?: string; reason?: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const googleConfigured = Boolean(GOOGLE_CLIENT_ID);
 
   useEffect(() => {
     if (!inviteToken) return;
@@ -58,7 +62,6 @@ export function LoginPage() {
         aria-hidden
         className="pointer-events-none absolute -top-40 left-1/2 h-[520px] w-[720px] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--primary-luminous)_18%,transparent),transparent)]"
       />
-      <div aria-hidden className="hairline-gold pointer-events-none absolute bottom-0 left-1/2 h-px w-[420px] -translate-x-1/2" />
 
       <div className="rise relative w-full max-w-md">
         <div className="flex justify-center pb-8">
@@ -80,13 +83,25 @@ export function LoginPage() {
             </p>
           ) : null}
           <div className="space-y-5 pt-6">
-            <GoogleSignInButton
-              clientId={GOOGLE_CLIENT_ID || undefined}
-              onCredential={onCredential}
-              disabled={submitting}
-              allowDevBypass={DEV_BYPASS || !GOOGLE_CLIENT_ID}
-              label="Continue with Google"
-            />
+            {googleConfigured || DEV_BYPASS ? (
+              <GoogleSignInButton
+                clientId={GOOGLE_CLIENT_ID || undefined}
+                onCredential={onCredential}
+                disabled={submitting}
+                allowDevBypass={DEV_BYPASS}
+                requireClientIdInProduction
+                unavailableMessage="Google sign-in is temporarily unavailable. Please contact Bhairava."
+                label="Continue with Google"
+              />
+            ) : (
+              <p
+                role="status"
+                className="rounded-xl bg-muted/60 px-3.5 py-3 text-sm text-foreground"
+                data-testid="google-unavailable"
+              >
+                Google sign-in is temporarily unavailable. Please contact Bhairava.
+              </p>
+            )}
             {err ? (
               <p role="alert" className="rounded-xl bg-destructive/10 px-3.5 py-2.5 text-sm text-destructive">
                 {err}
@@ -139,11 +154,15 @@ export function CustomerOnboardingPage() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr('');
+    if (!mobile.trim()) {
+      setErr('Mobile number is required');
+      return;
+    }
     setBusy(true);
     try {
       await api.auth.completeCustomerProfile({
         name,
-        mobile,
+        mobile: mobile.trim(),
         city: city || undefined,
         referralCode: referralCode || undefined,
         termsAccepted: terms,
@@ -161,38 +180,68 @@ export function CustomerOnboardingPage() {
     <div className="flex min-h-dvh items-center justify-center bg-background px-5 py-12">
       <div className="w-full max-w-md">
         <div className="flex justify-center pb-8">
-          <BrandWordmark size={44} title="Bhairava" subtitle="Complete profile" />
+          <BrandWordmark size={52} title="Bhairava" subtitle="Complete profile" logoSrc={LOGO_SRC} />
         </div>
         <Panel className="sm:p-8">
           <h1 className="font-display text-2xl font-semibold tracking-[-0.02em]">Your details</h1>
-          <p className="pt-2 text-sm text-muted-foreground">Mobile is required. Email comes from Google and cannot be changed.</p>
+          <p className="pt-2 text-sm text-muted-foreground">
+            Mobile is required. Email comes from Google and cannot be changed.
+          </p>
           <form className="space-y-4 pt-6" onSubmit={onSubmit}>
             <label className="block text-sm">
-              <span className="text-muted-foreground">Email</span>
-              <input className="mt-1.5 h-11 w-full rounded-xl border border-border bg-muted/40 px-3" value={email} readOnly disabled />
+              <span className="text-muted-foreground">Google email</span>
+              <input
+                className="mt-1.5 h-11 w-full rounded-xl border border-border bg-muted/40 px-3"
+                value={email}
+                readOnly
+                disabled
+                data-testid="customer-profile-email"
+              />
             </label>
             <label className="block text-sm">
-              <span className="text-muted-foreground">Name</span>
-              <input className="mt-1.5 h-11 w-full rounded-xl border border-border bg-background px-3" value={name} onChange={(e) => setName(e.target.value)} required />
+              <span className="text-muted-foreground">Full name</span>
+              <input
+                className="mt-1.5 h-11 w-full rounded-xl border border-border bg-background px-3"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                data-testid="customer-profile-name"
+              />
             </label>
             <label className="block text-sm">
-              <span className="text-muted-foreground">Mobile</span>
-              <input className="mt-1.5 h-11 w-full rounded-xl border border-border bg-background px-3" value={mobile} onChange={(e) => setMobile(e.target.value)} required inputMode="tel" placeholder="10-digit mobile" />
+              <span className="text-muted-foreground">Mobile number</span>
+              <input
+                className="mt-1.5 h-11 w-full rounded-xl border border-border bg-background px-3"
+                value={mobile}
+                onChange={(e) => setMobile(e.target.value)}
+                required
+                inputMode="tel"
+                placeholder="10-digit mobile"
+                data-testid="customer-profile-mobile"
+              />
             </label>
             <label className="block text-sm">
               <span className="text-muted-foreground">City (optional)</span>
-              <input className="mt-1.5 h-11 w-full rounded-xl border border-border bg-background px-3" value={city} onChange={(e) => setCity(e.target.value)} />
+              <input
+                className="mt-1.5 h-11 w-full rounded-xl border border-border bg-background px-3"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+              />
             </label>
             <label className="block text-sm">
               <span className="text-muted-foreground">Referral code (optional)</span>
-              <input className="mt-1.5 h-11 w-full rounded-xl border border-border bg-background px-3" value={referralCode} onChange={(e) => setReferralCode(e.target.value)} />
+              <input
+                className="mt-1.5 h-11 w-full rounded-xl border border-border bg-background px-3"
+                value={referralCode}
+                onChange={(e) => setReferralCode(e.target.value)}
+              />
             </label>
             <label className="flex items-start gap-2 text-sm">
               <input type="checkbox" className="mt-1" checked={terms} onChange={(e) => setTerms(e.target.checked)} required />
               <span>I accept the Bhairava terms of use and privacy notice.</span>
             </label>
             {err ? <p role="alert" className="text-sm text-destructive">{err}</p> : null}
-            <Btn type="submit" variant="primary" className="h-11 w-full" disabled={busy || !terms}>
+            <Btn type="submit" variant="primary" className="h-11 w-full" disabled={busy || !terms} data-testid="customer-profile-submit">
               {busy ? 'Saving…' : 'Activate account'}
             </Btn>
           </form>

@@ -48,9 +48,10 @@
   --secondary-foreground: #F7FBF8;
   --secondary-container: #D4E4DA;
 
-  --gold: #E4AD3C;
-  --gold-foreground: #462400;
-  --gold-container: #FBE6B3;
+  /* Deprecated decorative gold — aliased to green neutrals (not brand). Warning stays semantic. */
+  --gold: #3D5A4A;
+  --gold-foreground: #F7FBF8;
+  --gold-container: #D4E4DA;
 
   --muted: var(--surface-low);
   --muted-foreground: #5A6B62;
@@ -71,7 +72,7 @@
 
   --chart-1: #006D32;
   --chart-2: #3D5A4A;
-  --chart-3: #E4AD3C;
+  --chart-3: #6A9A7E;
   --chart-4: #00D166;
   --chart-5: #1A4D32;
 
@@ -87,7 +88,8 @@
   --gradient-primary: linear-gradient(135deg, #006D32 0%, #006D32 35%, #00D166 130%);
   --gradient-luminous: linear-gradient(135deg, #00D166, #006D32);
   --gradient-flow: linear-gradient(135deg, var(--secondary), #6A9A7E);
-  --gradient-gold: linear-gradient(135deg, #CC8730, #F2CE59);
+  /* Deprecated — aliased to luminous (no decorative gold). */
+  --gradient-gold: var(--gradient-luminous);
 
   /* Plot status — solid (legend/chips), soft fill (layouts), ink (chip text) */
   --plot-available: #4CAF7D;
@@ -148,9 +150,9 @@
   --secondary-foreground: #04110A;
   --secondary-container: #1B3C2C;
 
-  --gold: #E9BE57;
-  --gold-foreground: #331700;
-  --gold-container: #684600;
+  --gold: #8FB89F;
+  --gold-foreground: #04110A;
+  --gold-container: #1B3C2C;
 
   --muted: var(--surface-c);
   --muted-foreground: #98A89E;
