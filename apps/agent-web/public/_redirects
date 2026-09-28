@@ -1,1 +1,4 @@
-/*    /index.html   200
+/app/agent/assets/*      /assets/:splat       200
+/app/agent/branding/*    /branding/:splat     200
+/app/agent/*             /index.html          200
+/                        /app/agent/           302
