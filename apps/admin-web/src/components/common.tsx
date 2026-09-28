@@ -12,7 +12,7 @@ export function Notice({ tone = 'ok', children, className }: { tone?: 'ok' | 'er
       className={cn(
         'rounded-xl px-3.5 py-2.5 text-sm break-words',
         tone === 'err' && 'bg-destructive/10 text-destructive',
-        tone === 'ok' && 'bg-primary/10 text-primary',
+        tone === 'ok' && 'bg-success/10 text-success',
         tone === 'info' && 'bg-surface-low text-muted-foreground',
         className,
       )}

@@ -4,9 +4,14 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
 import { userFacingError } from '@bhairava/api-client';
+import { brand, palette } from '@bhairava/ui-mobile';
 import { api, tokens } from './src/api';
 
 const Tab = createBottomTabNavigator();
+const titleStyle = { fontSize: 22, fontWeight: '700' as const, marginBottom: 12, color: brand.foreground };
+const mutedStyle = { marginTop: 8, color: palette.mutedForeground };
+const dangerStyle = { color: '#b91c1c' };
+const inputStyle = { borderWidth: 1, borderColor: palette.outlineVariant, borderRadius: 8, padding: 10, marginVertical: 4 };
 
 function useLiveList(loader: () => Promise<string[]>) {
   const [rows, setRows] = useState<string[]>(['Loading...']);
@@ -25,10 +30,10 @@ function useLiveList(loader: () => Promise<string[]>) {
 function ListScreen({ title, loader }: { title: string; loader: () => Promise<string[]> }) {
   const { rows, err } = useLiveList(loader);
   return (
-    <SafeAreaView style={{ flex: 1, padding: 16 }}>
-      <Text style={{ fontSize: 22, fontWeight: '700', marginBottom: 12 }}>{title}</Text>
-      {err ? <Text style={{ color: '#b91c1c' }}>{err}</Text> : null}
-      <FlatList data={rows} keyExtractor={(_, i) => String(i)} renderItem={({ item }) => <Text style={{ paddingVertical: 8 }}>{item}</Text>} />
+    <SafeAreaView style={{ flex: 1, padding: 16, backgroundColor: brand.surface }}>
+      <Text style={titleStyle}>{title}</Text>
+      {err ? <Text style={dangerStyle}>{err}</Text> : null}
+      <FlatList data={rows} keyExtractor={(_, i) => String(i)} renderItem={({ item }) => <Text style={{ paddingVertical: 8, color: brand.foreground }}>{item}</Text>} />
     </SafeAreaView>
   );
 }
@@ -38,12 +43,13 @@ function DetailScreen() {
   const [plots, setPlots] = useState<string[]>([]);
   const [err, setErr] = useState('');
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: brand.surface }}>
       <ScrollView contentContainerStyle={{ padding: 16 }}>
-        <Text style={{ fontSize: 22, fontWeight: '700' }}>Explore plots</Text>
-        <TextInput placeholder="Project id" value={projectId} onChangeText={setProjectId} style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, padding: 10, marginVertical: 8 }} />
+        <Text style={{ fontSize: 22, fontWeight: '700', color: brand.foreground }}>Explore plots</Text>
+        <TextInput placeholder="Project id" value={projectId} onChangeText={setProjectId} style={{ ...inputStyle, marginVertical: 8 }} />
         <Button
           title="Load plots"
+          color={brand.primary}
           onPress={async () => {
             setErr('');
             try {
@@ -54,8 +60,8 @@ function DetailScreen() {
             }
           }}
         />
-        {err ? <Text style={{ color: '#b91c1c' }}>{err}</Text> : null}
-        {plots.map((p, i) => <Text key={i} style={{ paddingVertical: 6 }}>{p}</Text>)}
+        {err ? <Text style={dangerStyle}>{err}</Text> : null}
+        {plots.map((p, i) => <Text key={i} style={{ paddingVertical: 6, color: brand.foreground }}>{p}</Text>)}
       </ScrollView>
     </SafeAreaView>
   );
@@ -63,11 +69,11 @@ function DetailScreen() {
 
 function MoreScreen() {
   return (
-    <SafeAreaView style={{ flex: 1, padding: 16 }}>
-      <Text style={{ fontSize: 22, fontWeight: '700' }}>Support / Profile</Text>
-      <Text style={{ marginTop: 8, color: '#64748b' }}>SecureStore auth. Store signing BLOCKED BY EXTERNAL CREDENTIAL.</Text>
+    <SafeAreaView style={{ flex: 1, padding: 16, backgroundColor: brand.surface }}>
+      <Text style={{ fontSize: 22, fontWeight: '700', color: brand.foreground }}>Support / Profile</Text>
+      <Text style={mutedStyle}>SecureStore auth. Store signing BLOCKED BY EXTERNAL CREDENTIAL.</Text>
       <View style={{ height: 12 }} />
-      <Button title="Sign out" onPress={async () => { try { await api.auth.logout(); } catch {} await tokens.clear(); }} />
+      <Button title="Sign out" color={brand.primary} onPress={async () => { try { await api.auth.logout(); } catch {} await tokens.clear(); }} />
     </SafeAreaView>
   );
 }
@@ -77,13 +83,14 @@ function Login({ onDone }: { onDone: () => void }) {
   const [password, setPassword] = useState('');
   const [err, setErr] = useState('');
   return (
-    <SafeAreaView style={{ flex: 1, padding: 24, justifyContent: 'center' }}>
-      <Text style={{ fontSize: 24, fontWeight: '700', marginBottom: 12 }}>My Bhairava</Text>
-      <TextInput autoCapitalize="none" value={email} onChangeText={setEmail} placeholder="Email" style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, padding: 10, marginBottom: 8 }} />
-      <TextInput secureTextEntry value={password} onChangeText={setPassword} placeholder="Password" style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, padding: 10, marginBottom: 8 }} />
-      {err ? <Text style={{ color: '#b91c1c' }}>{err}</Text> : null}
+    <SafeAreaView style={{ flex: 1, padding: 24, justifyContent: 'center', backgroundColor: brand.surface }}>
+      <Text style={{ fontSize: 24, fontWeight: '700', marginBottom: 12, color: brand.foreground }}>My Bhairava</Text>
+      <TextInput autoCapitalize="none" value={email} onChangeText={setEmail} placeholder="Email" style={{ ...inputStyle, marginBottom: 8 }} />
+      <TextInput secureTextEntry value={password} onChangeText={setPassword} placeholder="Password" style={{ ...inputStyle, marginBottom: 8 }} />
+      {err ? <Text style={dangerStyle}>{err}</Text> : null}
       <Button
         title="Sign in"
+        color={brand.primary}
         onPress={async () => {
           try {
             const s = await api.auth.login(email, password);
@@ -106,7 +113,7 @@ export default function App() {
   return (
     <NavigationContainer>
       <StatusBar style="dark" />
-      <Tab.Navigator>
+      <Tab.Navigator screenOptions={{ headerStyle: { backgroundColor: brand.surface }, headerTintColor: brand.foreground, tabBarActiveTintColor: brand.primary, tabBarInactiveTintColor: palette.mutedForeground }}>
         <Tab.Screen name="Home" children={() => <ListScreen title="Home" loader={async () => { const [b, p, n] = await Promise.all([(api as any).bookings.list(), api.payments.list(), (api as any).notifications.list()]); return ['Bookings ' + b.length, 'Payments ' + p.length, 'Notifications ' + n.length]; }} />} />
         <Tab.Screen name="Explore" children={() => <ListScreen title="Explore projects" loader={async () => (await api.projects.list()).map((p: any) => p.id.slice(0, 8) + ' · ' + p.name + ' · ' + (p.city || ''))} />} />
         <Tab.Screen name="Plots" children={() => <DetailScreen />} />

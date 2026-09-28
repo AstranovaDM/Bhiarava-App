@@ -1,103 +1,122 @@
 /**
- * Bhairava design tokens — "The Luminous Engine".
+ * Bhairava design tokens — logo is Source of Truth.
  *
- * Framework-agnostic values shared by web (`@bhairava/ui-web`) and mobile
- * (`@bhairava/ui-mobile`). Web consumers get the same values as CSS custom
- * properties from `@bhairava/design-tokens/tokens.css` (see `cssVar` below for
- * the variable names).
+ * Palette extracted programmatically from
+ * `apps/admin-web/public/branding/bhairava-logo.png` (identical bytes in
+ * `packages/ui-web/assets/branding/bhairava-logo.png`): non-white, opaque
+ * pixels clustered by HSV into primary blue, dark blue, light blue, gold,
+ * and deep navy. Surfaces are blue+white / gold+white mixes only.
  *
- * The surface ladder, primary green and luminous green are LOCKED brand values.
- * Change them only with design sign-off; `tokens.css` must stay in sync
- * (enforced by `tokens.test.ts`).
+ * Green is NOT brand identity. Keep green for semantic success / completed /
+ * positive / AVAILABLE plot status only.
+ *
+ * `tokens.css` must stay in sync (enforced by `tokens.test.ts`).
  */
 
 /* --------------------------------- surfaces -------------------------------- */
 
-/** Locked tonal surface ladder — green/neutral (not blue-tint). Separation from tonal shifts. */
+/** Blue+white tonal surface ladder (logo primary × white). */
 export const surfaces = {
-  /** App background. */
-  base: '#F4F7F5',
+  /** App background — brand-surface. */
+  base: '#F2F6FA',
   /** Section / sidebar / tonal panels. */
-  section: '#E8F0EB',
+  section: '#EBF1F7',
   /** Cards on a section, inputs, chips. */
-  card: '#DCE8E0',
-  /** Selected / pressed / highest emphasis surface. */
-  selected: '#C8DCD0',
+  card: '#E1EAF4',
+  /** Selected / pressed / highest emphasis surface — brand-selected. */
+  selected: '#D1E0EE',
   /** Raised panels, sheets, popovers. */
   white: '#FFFFFF',
 } as const;
 
 /* ---------------------------------- palette -------------------------------- */
 
-/** Locked brand greens. */
+/**
+ * Logo-extracted brand colors (hex from pixel clusters).
+ * - primary: house-body saturated blue average
+ * - primaryDark: house shadow mode
+ * - primaryLight: metallic highlight mode
+ * - accent: gold 'B' mode
+ * - accentSoft: gold × white
+ * - foreground: deep navy from darkest blue shadows
+ */
 export const brand = {
-  primary: '#006D32',
-  luminous: '#00D166',
+  primary: '#0250A1',
+  primaryDark: '#002C68',
+  primaryLight: '#90C8F8',
+  accent: '#F0B038',
+  accentSoft: '#FCF2DF',
+  surface: surfaces.base,
+  selected: surfaces.selected,
+  foreground: '#001F49',
+  /** @deprecated Alias of primaryLight — was luminous green; now logo light blue. */
+  luminous: '#90C8F8',
 } as const;
 
 export const palette = {
   primary: brand.primary,
   primaryForeground: '#FFFFFF',
-  primaryLuminous: brand.luminous,
-  primaryContainer: '#BAECCA',
-  onPrimaryContainer: '#003416',
+  primaryLuminous: brand.primaryLight,
+  primaryContainer: '#C7D8EA',
+  onPrimaryContainer: brand.primaryDark,
 
-  /** Neutral secondary (replaces blue-tint secondary). Google button is the only blue exception in UI. */
-  secondary: '#3D5A4A',
-  secondaryForeground: '#F7FBF8',
-  secondaryContainer: '#D4E4DA',
+  /** Muted blue-neutral secondary (desaturated logo primary). Google button keeps Google blue. */
+  secondary: '#3F5061',
+  secondaryForeground: '#F4F8FC',
+  secondaryContainer: '#D5E0EB',
 
-  /** @deprecated Unapproved decorative gold — aliased to green-derived neutral. Prefer primary/luminous. */
-  gold: '#3D5A4A',
-  goldForeground: '#F7FBF8',
-  goldContainer: '#D4E4DA',
+  /** Logo gold accent — sparse decorative use. */
+  gold: brand.accent,
+  goldForeground: '#3C2200',
+  goldContainer: brand.accentSoft,
 
-  foreground: '#0F1F17',
-  mutedForeground: '#5A6B62',
-  outlineVariant: '#A8B8AE',
+  foreground: brand.foreground,
+  mutedForeground: '#5A6B7A',
+  outlineVariant: '#A8B4C2',
 
   destructive: '#D02B31',
   destructiveForeground: '#FFF9F8',
-  /** Semantic warning only — not brand decorative gold. */
+  /** Semantic warning — amber, distinct from brand gold accent. */
   warning: '#DA950B',
   warningForeground: '#3C2200',
+  /** Semantic success only — not brand identity. */
   success: '#00884B',
   successForeground: '#FFFFFF',
 } as const;
 
-/** Dark theme counterparts (web `.dark` class). Brand greens stay recognisable. */
+/** Dark theme counterparts (web `.dark` class). Brand blues stay recognisable. */
 export const darkPalette = {
   surfaces: {
-    base: '#0A1410',
-    section: '#101B16',
-    card: '#16221C',
-    selected: '#1E2C24',
-    white: '#030C08',
-    bright: '#202F28',
-    highest: '#27372E',
+    base: '#060E1A',
+    section: '#0B1626',
+    card: '#122033',
+    selected: '#1A2C44',
+    white: '#03080F',
+    bright: '#1E3048',
+    highest: '#243A54',
   },
-  primary: brand.luminous,
-  primaryForeground: '#01210F',
-  primaryContainer: '#00522A',
-  onPrimaryContainer: '#BAECCA',
-  secondary: '#8FB89F',
-  secondaryForeground: '#04110A',
-  secondaryContainer: '#1B3C2C',
-  /** @deprecated Unapproved decorative gold — aliased to green-derived neutral. */
-  gold: '#8FB89F',
-  goldForeground: '#04110A',
-  goldContainer: '#1B3C2C',
-  foreground: '#EDF4EF',
-  mutedForeground: '#98A89E',
-  outlineVariant: '#4A6656',
+  primary: brand.primaryLight,
+  primaryForeground: brand.primaryDark,
+  primaryContainer: brand.primaryDark,
+  onPrimaryContainer: '#C7D8EA',
+  secondary: '#9AADBF',
+  secondaryForeground: '#0A1522',
+  secondaryContainer: '#1A2C40',
+  gold: brand.accent,
+  goldForeground: '#3C2200',
+  goldContainer: '#3A2E14',
+  foreground: '#E8F0FA',
+  mutedForeground: '#9AABBC',
+  outlineVariant: '#4A5F75',
 } as const;
 
+/** Charts: logo blue hierarchy + gold + gray — no green identity series. */
 export const chart = {
   1: brand.primary,
-  2: '#3D5A4A',
-  3: '#6A9A7E',
-  4: brand.luminous,
-  5: '#1A4D32',
+  2: brand.primaryDark,
+  3: brand.primaryLight,
+  4: brand.accent,
+  5: '#64748B',
 } as const;
 
 /* -------------------------------- plot status ------------------------------ */
@@ -106,6 +125,7 @@ export const chart = {
  * Canonical plot status colors. Mirrors `@bhairava/domain`
  * (`canonicalPlotStatusSolid/Fill/Ink`) so RN and plain-CSS consumers don't
  * need the domain package; `tokens.test.ts` guards against drift.
+ * AVAILABLE green is functional status, not brand chrome.
  */
 export const PLOT_STATUS_KEYS = [
   'AVAILABLE',
@@ -163,8 +183,14 @@ export const colors = {
   surface: surfaces,
   brand: {
     primary: brand.primary,
-    luminous: brand.luminous,
-    accent: brand.luminous,
+    primaryDark: brand.primaryDark,
+    primaryLight: brand.primaryLight,
+    luminous: brand.primaryLight,
+    accent: brand.accent,
+    accentSoft: brand.accentSoft,
+    surface: brand.surface,
+    selected: brand.selected,
+    foreground: brand.foreground,
     danger: palette.destructive,
   },
   ...palette,
@@ -178,11 +204,10 @@ export const colors = {
 /* -------------------------------- gradients -------------------------------- */
 
 export const gradients = {
-  primary: `linear-gradient(135deg, ${brand.primary} 0%, ${brand.primary} 35%, ${brand.luminous} 130%)`,
-  luminous: `linear-gradient(135deg, ${brand.luminous}, ${brand.primary})`,
-  flow: `linear-gradient(135deg, ${palette.secondary}, #6A9A7E)`,
-  /** @deprecated Prefer `gradients.luminous`. Kept as alias — no decorative gold. */
-  gold: `linear-gradient(135deg, ${brand.primary}, ${brand.luminous})`,
+  primary: `linear-gradient(135deg, ${brand.primaryDark} 0%, ${brand.primary} 45%, ${brand.primaryLight} 130%)`,
+  luminous: `linear-gradient(135deg, ${brand.primaryLight}, ${brand.primary})`,
+  flow: `linear-gradient(135deg, ${palette.secondary}, ${brand.primaryLight})`,
+  gold: `linear-gradient(135deg, ${brand.accent}, #F8C048)`,
 } as const;
 
 /* -------------------------------- typography ------------------------------- */
@@ -278,11 +303,11 @@ export const radius = {
 
 /* ---------------------------------- shadows -------------------------------- */
 
-/** Subtle ambient shadows tinted with the foreground ink (never pure black). */
+/** Subtle ambient shadows tinted with brand navy (never pure black). */
 export const shadows = {
-  ambient: '0 18px 40px -18px rgba(13, 32, 54, 0.14)',
-  float: '0 24px 60px -24px rgba(13, 32, 54, 0.22)',
-  glow: '0 0 0 1px rgba(0, 109, 50, 0.18), 0 12px 32px -12px rgba(0, 209, 102, 0.45)',
+  ambient: '0 18px 40px -18px rgba(0, 31, 73, 0.14)',
+  float: '0 24px 60px -24px rgba(0, 31, 73, 0.22)',
+  glow: '0 0 0 1px rgba(2, 80, 161, 0.18), 0 12px 32px -12px rgba(144, 200, 248, 0.45)',
 } as const;
 
 /** React Native equivalents of `shadows`. */
@@ -327,6 +352,14 @@ export const layout = {
 
 /** CSS custom properties defined by `tokens.css` (and `@bhairava/ui-web/styles.css`). */
 export const cssVar = {
+  brandPrimary: '--brand-primary',
+  brandPrimaryDark: '--brand-primary-dark',
+  brandPrimaryLight: '--brand-primary-light',
+  brandAccent: '--brand-accent',
+  brandAccentSoft: '--brand-accent-soft',
+  brandSurface: '--brand-surface',
+  brandSelected: '--brand-selected',
+  brandForeground: '--brand-foreground',
   surface: '--surface',
   surfaceBright: '--surface-bright',
   surfaceLowest: '--surface-lowest',

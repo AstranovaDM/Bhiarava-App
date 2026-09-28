@@ -129,7 +129,7 @@ function NavList({ navGroups, onNavigate }: { navGroups: NavGroup[]; onNavigate?
                   className={cn(
                     "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors lg:py-2",
                     isActive
-                      ? "bg-surface-lowest font-medium text-foreground shadow-ambient"
+                      ? "bg-brand-selected font-medium text-foreground shadow-ambient"
                       : "text-muted-foreground hover:bg-surface-c hover:text-foreground",
                   )}
                 >

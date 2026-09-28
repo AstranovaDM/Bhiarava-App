@@ -12,7 +12,7 @@ Production path remains Nest + Prisma (no PLATFORM_SEED / mock repos / localStor
 - Invite email/phone hint binding; mismatch rejects without PII / attribution steal
 - DIRECT_APP → Bhairava Direct; AGENT_INVITE → inviting agent; original attribution retained on reassignment
 - Site visit request → primary agent else Bhairava Direct
-- Brand: `#006D32` / `#00D166` / white / green neutrals; decorative gold deprecated/aliased
+- Brand (logo SoT): `#0250A1` / `#002C68` / `#90C8F8` / `#F0B038` / white / navy; green is semantic success only
 
 ## Gaps / follow-ups
 

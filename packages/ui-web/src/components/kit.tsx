@@ -177,7 +177,7 @@ export type ChipTone = "neutral" | "positive" | "info" | "warning" | "danger";
 
 const chipTones: Record<ChipTone, string> = {
   neutral: "bg-surface-c text-muted-foreground",
-  positive: "bg-primary/12 text-primary",
+  positive: "bg-success/12 text-success",
   info: "bg-secondary/14 text-secondary",
   warning: "bg-warning/18 text-warning-foreground",
   danger: "bg-destructive/12 text-destructive",
@@ -185,7 +185,7 @@ const chipTones: Record<ChipTone, string> = {
 
 const chipDots: Record<ChipTone, string> = {
   neutral: "bg-muted-foreground/60",
-  positive: "bg-primary",
+  positive: "bg-success",
   info: "bg-secondary",
   warning: "bg-warning",
   danger: "bg-destructive",
