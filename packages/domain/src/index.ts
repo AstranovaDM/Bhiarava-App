@@ -13,6 +13,7 @@ export * from './pii';
 export * from './plot-geometry';
 export * from './plot-status-colors';
 export * from './layout-api';
+export * from './google-auth-rules';
 
 /** Explicit named re-exports so Vite/Rollup can resolve CJS interop. */
 export {
@@ -43,3 +44,15 @@ export {
   toCanonicalPlotStatus,
   type CanonicalPlotStatus,
 } from './plot-status';
+export {
+  BHAIRAVA_DIRECT_CODE,
+  normalizePhoneIn,
+  decideMobileOnlyDup,
+  decidePhoneStealAttempt,
+  resolveDirectAppSalesOwner,
+  resolveInviteSalesOwner,
+  resolveSiteVisitAssignee,
+  needsProfileCompletion,
+  generateAgentCode,
+  invitePublicMeta,
+} from './google-auth-rules';

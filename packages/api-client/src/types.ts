@@ -4,9 +4,13 @@ export type PublicUser = {
   id: string;
   organizationId: string;
   email: string | null;
+  mobile?: string | null;
   displayName: string;
   roleCode: string;
+  role?: string;
   status: string;
+  profileComplete?: boolean;
+  needsProfile?: boolean;
 };
 
 export type AuthSession = {

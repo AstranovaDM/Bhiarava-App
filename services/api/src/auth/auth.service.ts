@@ -46,7 +46,7 @@ export class AuthService {
         ].filter(Boolean) as any,
       },
     });
-    if (!user || !(await verifyPassword(user.passwordHash, dto.password))) {
+    if (!user?.passwordHash || !(await verifyPassword(user.passwordHash, dto.password))) {
       await this.audit.log({
         organizationId: user?.organizationId,
         actorId: user?.id,
@@ -259,6 +259,16 @@ export class AuthService {
     };
   }
 
+  /** Public wrapper for Google / invite session issuance. */
+  issueTokensPublic(
+    userId: string,
+    organizationId: string,
+    meta: { ip?: string; userAgent?: string },
+    familyId?: string,
+  ) {
+    return this.issueTokens(userId, organizationId, meta, familyId);
+  }
+
   toPublicUser(user: {
     id: string;
     organizationId: string;
@@ -267,6 +277,7 @@ export class AuthService {
     displayName: string;
     roleCode: string;
     status: string;
+    profileCompletedAt?: Date | null;
   }) {
     return {
       id: user.id,
@@ -275,8 +286,17 @@ export class AuthService {
       mobile: user.mobile,
       displayName: user.displayName,
       role: user.roleCode,
+      roleCode: user.roleCode,
       status: user.status,
+      profileComplete: Boolean(user.profileCompletedAt),
+      needsProfile: !user.profileCompletedAt,
     };
+  }
+
+  async me(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return null;
+    return this.toPublicUser(user);
   }
 
   async validateAccessPayload(payload: any): Promise<AuthPrincipal> {

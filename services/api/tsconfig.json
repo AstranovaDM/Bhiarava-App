@@ -20,6 +20,7 @@
     "paths": {
       "@bhairava/domain": ["../../packages/domain/dist/index.d.ts"],
       "@bhairava/permissions": ["../../packages/permissions/dist/index.d.ts"],
+      "@bhairava/validation": ["../../packages/validation/src/index.ts"],
       "@bhairava/database": ["../../packages/database/src/index.ts"],
       "@bhairava/auth": ["../../packages/auth/src/index.ts"],
       "@bhairava/config": ["../../packages/config/src/index.ts"]

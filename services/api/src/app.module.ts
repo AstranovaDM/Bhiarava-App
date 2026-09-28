@@ -22,6 +22,7 @@ import { LayoutsModule } from './layouts/layouts.module';
 import { ProjectsModule } from './projects/projects.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { OpsModule } from './ops/ops.module';
+import { InvitesModule } from './invites/invites.module';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { BigIntJsonInterceptor } from './common/serialize/bigint-json.interceptor';
@@ -53,6 +54,7 @@ import { BigIntJsonInterceptor } from './common/serialize/bigint-json.intercepto
     ProjectsModule,
     NotificationsModule,
     OpsModule,
+    InvitesModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

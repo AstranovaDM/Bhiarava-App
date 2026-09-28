@@ -13,16 +13,16 @@
 
 /* --------------------------------- surfaces -------------------------------- */
 
-/** Locked tonal surface ladder. Separation comes from tonal shifts, not borders. */
+/** Locked tonal surface ladder — green/neutral (not blue-tint). Separation from tonal shifts. */
 export const surfaces = {
   /** App background. */
-  base: '#F8F9FF',
+  base: '#F4F7F5',
   /** Section / sidebar / tonal panels. */
-  section: '#EFF4FF',
+  section: '#E8F0EB',
   /** Cards on a section, inputs, chips. */
-  card: '#E5EEFF',
+  card: '#DCE8E0',
   /** Selected / pressed / highest emphasis surface. */
-  selected: '#D3E4FE',
+  selected: '#C8DCD0',
   /** Raised panels, sheets, popovers. */
   white: '#FFFFFF',
 } as const;
@@ -42,17 +42,18 @@ export const palette = {
   primaryContainer: '#BAECCA',
   onPrimaryContainer: '#003416',
 
-  secondary: '#116BB5',
-  secondaryForeground: '#F9FCFF',
-  secondaryContainer: '#C6E1FF',
+  /** Neutral secondary (replaces blue-tint secondary). Google button is the only blue exception in UI. */
+  secondary: '#3D5A4A',
+  secondaryForeground: '#F7FBF8',
+  secondaryContainer: '#D4E4DA',
 
   gold: '#E4AD3C',
   goldForeground: '#462400',
   goldContainer: '#FBE6B3',
 
-  foreground: '#0D2036',
-  mutedForeground: '#5B6A7D',
-  outlineVariant: '#ABB9CB',
+  foreground: '#0F1F17',
+  mutedForeground: '#5A6B62',
+  outlineVariant: '#A8B8AE',
 
   destructive: '#D02B31',
   destructiveForeground: '#FFF9F8',
@@ -65,35 +66,35 @@ export const palette = {
 /** Dark theme counterparts (web `.dark` class). Brand greens stay recognisable. */
 export const darkPalette = {
   surfaces: {
-    base: '#0A1421',
-    section: '#101B29',
-    card: '#162232',
-    selected: '#1E2C3E',
-    white: '#030C17',
-    bright: '#202F42',
-    highest: '#27374A',
+    base: '#0A1410',
+    section: '#101B16',
+    card: '#16221C',
+    selected: '#1E2C24',
+    white: '#030C08',
+    bright: '#202F28',
+    highest: '#27372E',
   },
   primary: brand.luminous,
   primaryForeground: '#01210F',
   primaryContainer: '#00522A',
   onPrimaryContainer: '#BAECCA',
-  secondary: '#53B6EB',
-  secondaryForeground: '#010E1E',
-  secondaryContainer: '#1B3C5D',
+  secondary: '#8FB89F',
+  secondaryForeground: '#04110A',
+  secondaryContainer: '#1B3C2C',
   gold: '#E9BE57',
   goldForeground: '#331700',
   goldContainer: '#684600',
-  foreground: '#EDF2F9',
-  mutedForeground: '#98A6B8',
-  outlineVariant: '#4A5666',
+  foreground: '#EDF4EF',
+  mutedForeground: '#98A89E',
+  outlineVariant: '#4A6656',
 } as const;
 
 export const chart = {
   1: brand.primary,
-  2: '#2EA2E5',
+  2: '#3D5A4A',
   3: palette.gold,
   4: brand.luminous,
-  5: '#153470',
+  5: '#1A4D32',
 } as const;
 
 /* -------------------------------- plot status ------------------------------ */
@@ -176,7 +177,7 @@ export const colors = {
 export const gradients = {
   primary: `linear-gradient(135deg, ${brand.primary} 0%, ${brand.primary} 35%, ${brand.luminous} 130%)`,
   luminous: `linear-gradient(135deg, ${brand.luminous}, ${brand.primary})`,
-  flow: `linear-gradient(135deg, ${palette.secondary}, #62C8DF)`,
+  flow: `linear-gradient(135deg, ${palette.secondary}, #6A9A7E)`,
   gold: 'linear-gradient(135deg, #CC8730, #F2CE59)',
 } as const;
 

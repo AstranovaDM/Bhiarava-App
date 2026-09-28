@@ -96,7 +96,12 @@ function AuthenticatedShell() {
     api.auth
       .me()
       .then((res) => {
-        if (!cancelled) setUser(res.user);
+        if (!cancelled) {
+          setUser(res.user);
+          if (res.user.needsProfile || res.user.profileComplete === false) {
+            location.href = '/onboarding';
+          }
+        }
       })
       .catch(() => {});
     return () => {

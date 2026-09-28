@@ -1,9 +1,18 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { maskAadhaar, maskPan, projectCustomerPii } from '@bhairava/domain';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { AttributionSource } from '@prisma/client';
+import {
+  decidePhoneStealAttempt,
+  BHAIRAVA_DIRECT_CODE,
+  maskAadhaar,
+  maskPan,
+  normalizePhoneIn,
+  projectCustomerPii,
+} from '@bhairava/domain';
 import { PrismaService } from '../prisma/prisma.service';
 import { PiiService } from '../pii/pii.service';
 import { AuditService } from '../audit/audit.service';
 import type { AuthPrincipal } from '../auth/auth.types';
+import { GoogleAuthService } from '../auth/google-auth.service';
 
 @Injectable()
 export class CustomersService {
@@ -11,6 +20,7 @@ export class CustomersService {
     private readonly prisma: PrismaService,
     private readonly pii: PiiService,
     private readonly audit: AuditService,
+    private readonly googleAuth: GoogleAuthService,
   ) {}
 
   private roleLabel(actor: AuthPrincipal) {
@@ -200,20 +210,66 @@ export class CustomersService {
     if (actor.roleCode === 'AGENT') {
       agentId = (await this.agentIdFor(actor.userId)) ?? undefined;
     }
+    const phoneNormalized = normalizePhoneIn(body.phone);
+    if (!phoneNormalized) {
+      throw new BadRequestException('Valid Indian mobile is required');
+    }
+
+    if (actor.roleCode === 'AGENT' && agentId) {
+      const existing = await this.prisma.customer.findFirst({
+        where: { organizationId: actor.organizationId, phoneNormalized },
+        select: { id: true, agentId: true },
+      });
+      const decision = decidePhoneStealAttempt({
+        normalizedMobile: phoneNormalized,
+        existingCustomer: existing,
+        actingAgentId: agentId,
+      });
+      if (!decision.ok) {
+        await this.audit.log({
+          organizationId: actor.organizationId,
+          actorId: actor.userId,
+          action: 'assignment.steal_attempt',
+          entityType: 'Customer',
+          entityId: existing?.id,
+          metaJson: { via: 'customers.create', code: decision.code },
+        });
+        throw new ConflictException(decision.message);
+      }
+      if (decision.ok && decision.action === 'same_agent' && existing) {
+        return this.get(actor, existing.id);
+      }
+    }
+
+    // Ensure Direct desk exists for org (idempotent) when admin creates unassigned.
+    if (!agentId) {
+      agentId = await this.googleAuth.ensureBhairavaDirect(actor.organizationId);
+    }
+
     const panEncrypted = body.pan ? this.pii.encrypt(body.pan) : null;
     const aadhaarEncrypted = body.aadhaar ? this.pii.encrypt(body.aadhaar) : null;
+    const attributionSource =
+      actor.roleCode === 'AGENT'
+        ? AttributionSource.OTHER
+        : body.source === 'DIRECT_APP'
+          ? AttributionSource.DIRECT_APP
+          : AttributionSource.ADMIN_CREATED;
+
     const created = await this.prisma.customer.create({
       data: {
         organizationId: actor.organizationId,
         name: body.name,
-        phone: body.phone,
+        phone: phoneNormalized,
+        phoneNormalized,
         email: body.email,
         city: body.city,
         address: body.address,
         state: body.state,
         pincode: body.pincode,
         kycStatus: body.kycStatus,
-        source: body.source,
+        source: body.source ?? attributionSource,
+        attributionSource,
+        invitedByAgentId: actor.roleCode === 'AGENT' ? agentId : null,
         agentId,
         notes: body.notes,
         panEncrypted,
@@ -240,7 +296,28 @@ export class CustomersService {
       action: 'customer.create',
       entityType: 'Customer',
       entityId: created.id,
-      metaJson: { hasPan: Boolean(panEncrypted), hasAadhaar: Boolean(aadhaarEncrypted) },
+      metaJson: {
+        hasPan: Boolean(panEncrypted),
+        hasAadhaar: Boolean(aadhaarEncrypted),
+        attributionSource,
+        agentId,
+        bhairavaDirect: created.agentId
+          ? (
+              await this.prisma.agentProfile.findFirst({
+                where: { id: created.agentId, code: BHAIRAVA_DIRECT_CODE },
+                select: { id: true },
+              })
+            )?.id === created.agentId
+          : false,
+      },
+    });
+    await this.audit.log({
+      organizationId: actor.organizationId,
+      actorId: actor.userId,
+      action: 'assignment.customer.sales_owner',
+      entityType: 'Customer',
+      entityId: created.id,
+      metaJson: { agentId, attributionSource },
     });
     return this.project(actor, created, { ownsRelationship: true, isSelf: false });
   }

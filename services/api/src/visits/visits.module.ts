@@ -3,9 +3,11 @@ import { VisitsController } from './visits.controller';
 import { VisitsService } from './visits.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { RbacModule } from '../rbac/rbac.module';
+import { AuditModule } from '../audit/audit.module';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  imports: [PrismaModule, RbacModule],
+  imports: [PrismaModule, RbacModule, AuditModule, AuthModule],
   controllers: [VisitsController],
   providers: [VisitsService],
   exports: [VisitsService],

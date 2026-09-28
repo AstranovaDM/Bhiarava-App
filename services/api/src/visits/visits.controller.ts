@@ -15,6 +15,12 @@ class CreateVisitDto {
   @IsOptional() @IsString() notes?: string;
 }
 
+class RequestVisitDto {
+  @IsString() projectId!: string;
+  @IsString() scheduledAt!: string;
+  @IsOptional() @IsString() notes?: string;
+}
+
 class UpdateVisitStatusDto {
   @IsString() status!: string;
   @IsOptional() @IsString() notes?: string;
@@ -31,10 +37,23 @@ export class VisitsController {
     return this.visits.list(user, { projectId });
   }
 
+  /** Customer list of own visits (projects.view is too broad for agent CRM list). */
+  @Get('mine')
+  @RequirePermissions('sales.visits.request')
+  listMine(@CurrentUser() user: AuthPrincipal, @Query('projectId') projectId?: string) {
+    return this.visits.list(user, { projectId });
+  }
+
   @Post()
   @RequirePermissions('sales.leads.manage')
   create(@CurrentUser() user: AuthPrincipal, @Body() dto: CreateVisitDto) {
     return this.visits.create(user, dto);
+  }
+
+  @Post('request')
+  @RequirePermissions('sales.visits.request')
+  request(@CurrentUser() user: AuthPrincipal, @Body() dto: RequestVisitDto) {
+    return this.visits.request(user, dto);
   }
 
   @Patch(':id/status')

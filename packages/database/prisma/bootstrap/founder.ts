@@ -108,6 +108,44 @@ async function main() {
     founderEmail: user.email,
     note: 'Demo seeds were NOT applied. Run prisma db seed only for demo/staging data. Force password rotation on first interactive login where applicable.',
   }, null, 2));
+
+  // Ensure Bhairava Direct system sales desk exists (idempotent).
+  const directEmail = `bhairava-direct+${org.code.toLowerCase()}@system.bhairava.local`;
+  const directUser = await prisma.user.upsert({
+    where: { organizationId_email: { organizationId: org.id, email: directEmail } },
+    update: {
+      displayName: 'Bhairava Direct',
+      roleCode: RoleCode.AGENT,
+      status: UserAccountStatus.ACTIVE,
+      profileCompletedAt: new Date(),
+    },
+    create: {
+      organizationId: org.id,
+      email: directEmail,
+      passwordHash: null,
+      displayName: 'Bhairava Direct',
+      roleCode: RoleCode.AGENT,
+      status: UserAccountStatus.ACTIVE,
+      profileCompletedAt: new Date(),
+    },
+  });
+  await prisma.agentProfile.upsert({
+    where: { userId: directUser.id },
+    update: {
+      code: 'BHAIRAVA_DIRECT',
+      name: 'Bhairava Direct',
+      status: 'Active',
+      isSystem: true,
+    },
+    create: {
+      organizationId: org.id,
+      userId: directUser.id,
+      code: 'BHAIRAVA_DIRECT',
+      name: 'Bhairava Direct',
+      status: 'Active',
+      isSystem: true,
+    },
+  });
 }
 
 main()

@@ -142,6 +142,54 @@ export function createApiClient(opts: ApiClientOptions) {
         resetUnauthorizedGate();
         return session;
       },
+      googleCustomer: async (idToken: string, inviteToken?: string) => {
+        const session = await request<AuthSession>(
+          'POST',
+          '/api/auth/google/customer',
+          { idToken, inviteToken },
+          { skipAuthRefresh: true },
+        );
+        if (opts.tokens) await opts.tokens.setTokens(session.accessToken, session.refreshToken ?? null);
+        resetUnauthorizedGate();
+        return session;
+      },
+      googleAgent: async (idToken: string) => {
+        const session = await request<AuthSession>(
+          'POST',
+          '/api/auth/google/agent',
+          { idToken },
+          { skipAuthRefresh: true },
+        );
+        if (opts.tokens) await opts.tokens.setTokens(session.accessToken, session.refreshToken ?? null);
+        resetUnauthorizedGate();
+        return session;
+      },
+      completeCustomerProfile: (body: {
+        name: string;
+        mobile: string;
+        city?: string;
+        preferredProjectId?: string;
+        referralCode?: string;
+        referralNote?: string;
+        termsAccepted: boolean;
+        inviteToken?: string;
+      }) =>
+        request<{ user: PublicUser; customerId: string | null; skipped: boolean }>(
+          'POST',
+          '/api/auth/customer/complete-profile',
+          body,
+        ),
+      completeAgentProfile: (body: {
+        name: string;
+        phone?: string;
+        region?: string;
+        termsAccepted: boolean;
+      }) =>
+        request<{ user: PublicUser; agentId: string | null; agentCode: string | null; skipped: boolean }>(
+          'POST',
+          '/api/auth/agent/complete-profile',
+          body,
+        ),
       /**
        * Refresh session. Prefer HTTP-only cookie (empty body) for web;
        * optional body refreshToken for native clients that store a refresh token securely.
@@ -249,9 +297,47 @@ export function createApiClient(opts: ApiClientOptions) {
     visits: {
       list: (projectId?: string) =>
         request<VisitSummary[]>('GET', '/api/visits' + (projectId ? '?projectId=' + projectId : '')),
+      listMine: (projectId?: string) =>
+        request<VisitSummary[]>('GET', '/api/visits/mine' + (projectId ? '?projectId=' + projectId : '')),
       create: (body: Record<string, unknown>) => request<VisitSummary>('POST', '/api/visits', body),
+      request: (body: { projectId: string; scheduledAt: string; notes?: string }) =>
+        request<VisitSummary & { assignmentReason?: string }>('POST', '/api/visits/request', body),
       updateStatus: (id: string, status: string, notes?: string) =>
         request<VisitSummary>('PATCH', '/api/visits/' + id + '/status', { status, notes }),
+    },
+    invites: {
+      create: (body: { nameHint?: string; phoneHint?: string; emailHint?: string }) =>
+        request<{
+          id: string;
+          token: string;
+          shareUrl: string;
+          sharePath: string;
+          expiresAt: string;
+          attributionSource: string;
+          invitedByAgentId: string;
+          agentCode: string;
+        }>('POST', '/api/invites', body),
+      list: () =>
+        request<
+          Array<{
+            id: string;
+            nameHint: string | null;
+            expiresAt: string;
+            claimedAt: string | null;
+            revokedAt: string | null;
+            createdAt: string;
+            status: string;
+          }>
+        >('GET', '/api/invites'),
+      peek: (token: string) =>
+        request<{
+          valid: boolean;
+          agentName: string;
+          agentCode: string;
+          orgName: string;
+          expiresAt: string;
+          reason?: string;
+        }>('GET', '/api/invites/' + encodeURIComponent(token), undefined, { skipAuthRefresh: true }),
     },
     reservations: {
       list: (q?: { projectId?: string; state?: string }) => {

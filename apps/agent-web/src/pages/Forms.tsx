@@ -116,7 +116,11 @@ export function CustomerOnboardingPage() {
   );
 
   return (
-    <FormLayout eyebrow="Sales" title="Customer onboarding" description="Register a buyer. The customer is linked to your agent account.">
+    <FormLayout
+      eyebrow="Sales"
+      title="Customer onboarding"
+      description="Register a CRM buyer linked to you. Phone cannot steal another agent’s customer. Prefer Invite customer for Google portal attribution."
+    >
       <form onSubmit={submit} className="space-y-4">
         <Panel>
           <SectionTitle>Contact</SectionTitle>
@@ -154,6 +158,105 @@ export function CustomerOnboardingPage() {
           <FormFooter cancelTo="/customers" busy={busy} err={err} label="Save customer" />
         </Panel>
       </form>
+    </FormLayout>
+  );
+}
+
+export function InviteCustomerPage() {
+  const [form, setForm] = useState({ nameHint: '', phoneHint: '', emailHint: '' });
+  const set = (key: keyof typeof form) => (v: string) => setForm((f) => ({ ...f, [key]: v }));
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [result, setResult] = useState<{ shareUrl: string; token: string; expiresAt: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setErr('');
+    setResult(null);
+    try {
+      const invite = await api.invites.create({
+        nameHint: form.nameHint || undefined,
+        phoneHint: form.phoneHint || undefined,
+        emailHint: form.emailHint || undefined,
+      });
+      setResult({ shareUrl: invite.shareUrl, token: invite.token, expiresAt: invite.expiresAt });
+    } catch (ex) {
+      setErr(errorMessage(ex));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function copyLink() {
+    if (!result?.shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(result.shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setErr('Could not copy — select the link manually.');
+    }
+  }
+
+  async function shareLink() {
+    if (!result?.shareUrl) return;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Join Bhairava',
+          text: 'Complete your Bhairava customer profile with Google.',
+          url: result.shareUrl,
+        });
+      } catch {
+        /* user cancelled */
+      }
+    } else {
+      await copyLink();
+    }
+  }
+
+  return (
+    <FormLayout
+      eyebrow="Sales"
+      title="Invite customer"
+      description="Create a secure invite link. Attribution stays with you — phone alone cannot reassign another agent’s customer."
+    >
+      <form onSubmit={onSubmit}>
+        <Panel>
+          <SectionTitle>Invite details</SectionTitle>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Name hint">
+              <TextInput value={form.nameHint} onChange={set('nameHint')} autoComplete="off" />
+            </Field>
+            <Field label="Mobile hint">
+              <TextInput type="tel" value={form.phoneHint} onChange={set('phoneHint')} inputMode="tel" autoComplete="off" />
+            </Field>
+            <Field label="Email hint" className="sm:col-span-2">
+              <TextInput type="email" value={form.emailHint} onChange={set('emailHint')} autoComplete="off" />
+            </Field>
+          </div>
+          <FormFooter cancelTo="/customers" busy={busy} err={err} label="Create invite link" />
+        </Panel>
+      </form>
+      {result ? (
+        <Panel className="mt-4">
+          <SectionTitle>Share link</SectionTitle>
+          <p className="break-all rounded-xl bg-muted/50 px-3 py-2 text-sm" data-testid="invite-share-url">
+            {result.shareUrl}
+          </p>
+          <p className="pt-2 text-xs text-muted-foreground">Expires {new Date(result.expiresAt).toLocaleString()}</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Btn type="button" variant="primary" onClick={() => void copyLink()}>
+              {copied ? 'Copied' : 'Copy link'}
+            </Btn>
+            <Btn type="button" variant="tonal" onClick={() => void shareLink()}>
+              Share
+            </Btn>
+          </div>
+        </Panel>
+      ) : null}
     </FormLayout>
   );
 }

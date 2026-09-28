@@ -126,6 +126,40 @@ async function main() {
     },
   });
 
+  // System sales desk for DIRECT_APP attribution / site-visit fallback.
+  const directEmail = 'bhairava-direct@bhairava.demo';
+  const directUser = await prisma.user.upsert({
+    where: { organizationId_email: { organizationId: org.id, email: directEmail } },
+    update: {
+      passwordHash,
+      roleCode: RoleCode.AGENT,
+      status: UserAccountStatus.ACTIVE,
+      displayName: 'Bhairava Direct',
+      profileCompletedAt: new Date(),
+    },
+    create: {
+      organizationId: org.id,
+      email: directEmail,
+      passwordHash,
+      displayName: 'Bhairava Direct',
+      roleCode: RoleCode.AGENT,
+      status: UserAccountStatus.ACTIVE,
+      profileCompletedAt: new Date(),
+    },
+  });
+  await prisma.agentProfile.upsert({
+    where: { userId: directUser.id },
+    update: { code: 'BHAIRAVA_DIRECT', name: 'Bhairava Direct', status: 'Active', isSystem: true },
+    create: {
+      organizationId: org.id,
+      userId: directUser.id,
+      code: 'BHAIRAVA_DIRECT',
+      name: 'Bhairava Direct',
+      status: 'Active',
+      isSystem: true,
+    },
+  });
+
   const customer1 = await ensureCustomer({
     organizationId: org.id,
     email: 'customer@bhairava.demo',

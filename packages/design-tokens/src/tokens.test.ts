@@ -28,14 +28,20 @@ function rootVar(name: string): string | undefined {
 
 test('locked surface ladder and brand greens', () => {
   assert.deepEqual(surfaces, {
-    base: '#F8F9FF',
-    section: '#EFF4FF',
-    card: '#E5EEFF',
-    selected: '#D3E4FE',
+    base: '#F4F7F5',
+    section: '#E8F0EB',
+    card: '#DCE8E0',
+    selected: '#C8DCD0',
     white: '#FFFFFF',
   });
   assert.equal(brand.primary, '#006D32');
   assert.equal(brand.luminous, '#00D166');
+  assert.equal(palette.primaryForeground, '#FFFFFF');
+  // No blue-tint surfaces / secondary in brand lock
+  assert.equal(palette.secondary, '#3D5A4A');
+  for (const v of Object.values(surfaces)) {
+    assert.ok(!/#(?:F8F9FF|EFF4FF|E5EEFF|D3E4FE)/i.test(v), `blue-tint surface ${v}`);
+  }
 });
 
 test('tokens.css matches TS surfaces and palette', () => {

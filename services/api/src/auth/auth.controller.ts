@@ -1,14 +1,26 @@
 import { Body, Controller, Get, Post, Req, Res, UseGuards } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
-import { LoginDto, PasswordResetConfirmDto, PasswordResetRequestDto, RefreshDto } from './auth.dto';
+import { GoogleAuthService } from './google-auth.service';
+import {
+  CompleteAgentProfileDto,
+  CompleteCustomerProfileDto,
+  GoogleContinueDto,
+  LoginDto,
+  PasswordResetConfirmDto,
+  PasswordResetRequestDto,
+  RefreshDto,
+} from './auth.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { CurrentUser } from './current-user.decorator';
 import type { AuthPrincipal } from './auth.types';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly googleAuth: GoogleAuthService,
+  ) {}
 
   private setRefreshCookie(res: Response, refreshToken: string, expiresAt: string) {
     const secure = process.env.COOKIE_SECURE === 'true';
@@ -16,7 +28,6 @@ export class AuthController {
     const sameSite = (['lax', 'strict', 'none'].includes(sameSiteRaw)
       ? sameSiteRaw
       : 'lax') as 'lax' | 'strict' | 'none';
-    // SameSite=None requires Secure
     const effectiveSameSite = sameSite === 'none' && !secure ? 'lax' : sameSite;
     res.cookie('bhairava_refresh', refreshToken, {
       httpOnly: true,
@@ -35,6 +46,56 @@ export class AuthController {
     });
     this.setRefreshCookie(res, result.refreshToken, result.refreshExpiresAt);
     return result;
+  }
+
+  /** Customer: Continue with Google only (new + returning). */
+  @Post('google/customer')
+  async googleCustomer(
+    @Body() dto: GoogleContinueDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.googleAuth.continueWithGoogle('CUSTOMER', dto, {
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
+    this.setRefreshCookie(res, result.refreshToken, result.refreshExpiresAt);
+    return result;
+  }
+
+  /** Agent: open Google signup / sign-in (no Admin approval). */
+  @Post('google/agent')
+  async googleAgent(
+    @Body() dto: GoogleContinueDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.googleAuth.continueWithGoogle('AGENT', dto, {
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
+    this.setRefreshCookie(res, result.refreshToken, result.refreshExpiresAt);
+    return result;
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('customer/complete-profile')
+  completeCustomerProfile(
+    @CurrentUser() user: AuthPrincipal,
+    @Body() dto: CompleteCustomerProfileDto,
+    @Req() req: Request,
+  ) {
+    return this.googleAuth.completeCustomerProfile(user, dto, { ip: req.ip });
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('agent/complete-profile')
+  completeAgentProfile(
+    @CurrentUser() user: AuthPrincipal,
+    @Body() dto: CompleteAgentProfileDto,
+    @Req() req: Request,
+  ) {
+    return this.googleAuth.completeAgentProfile(user, dto, { ip: req.ip });
   }
 
   @Post('refresh')
@@ -77,8 +138,9 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  meGet(@CurrentUser() user: any) {
-    return { user };
+  async meGet(@CurrentUser() principal: AuthPrincipal) {
+    const user = await this.auth.me(principal.userId);
+    return { user: user ?? principal };
   }
 
   @Post('me')

@@ -4,7 +4,7 @@ import { ProfilePage, SupportPage } from './pages/Account';
 import { DocumentsPage } from './pages/Documents';
 import { ExplorePage, PlotDetailPage, ProjectDetailPage } from './pages/Explore';
 import { HomePage } from './pages/Home';
-import { LoginPage } from './pages/Login';
+import { LoginPage, CustomerOnboardingPage } from './pages/Login';
 import { NotificationsPage } from './pages/Notifications';
 import { PaymentsPage, SchedulesPage } from './pages/Payments';
 import { BookingsPage, PropertiesPage } from './pages/Portfolio';
@@ -14,6 +14,7 @@ export function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/onboarding" element={<CustomerOnboardingPage />} />
       <Route element={<CustomerShell />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/explore" element={<ExplorePage />} />

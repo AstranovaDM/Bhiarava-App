@@ -20,11 +20,11 @@ import { AppShell, LoadingState, type NavGroup, type NavItem } from '@bhairava/u
 import type { PublicUser } from '@bhairava/api-client';
 import { api, tokens } from './api';
 import { SessionContext, UNREAD_CAP, type AgentSession } from './session';
-import { LoginPage } from './pages/Login';
+import { LoginPage, AgentOnboardingPage } from './pages/Login';
 import { HomePage } from './pages/Home';
 import { PlotDetailPage, ProjectDetailPage, ProjectsPage } from './pages/Projects';
 import { BookingsPage, CustomersPage, LeadsPage, ReservationsPage, VisitsPage } from './pages/Sales';
-import { CreateLeadPage, CustomerOnboardingPage, ScheduleVisitPage } from './pages/Forms';
+import { CreateLeadPage, CustomerOnboardingPage, ScheduleVisitPage, InviteCustomerPage } from './pages/Forms';
 import { CollectionsPage, CommissionsPage } from './pages/Finance';
 import { DocumentsPage, NotificationsPage, ProfilePage } from './pages/Ops';
 
@@ -67,7 +67,8 @@ const NAV_GROUPS: NavGroup[] = [
 
 const QUICK_ACTIONS: NavItem[] = [
   { to: '/leads/new', label: 'New lead', icon: BadgePlus },
-  { to: '/customers/onboarding', label: 'Onboard customer', icon: UserPlus },
+  { to: '/customers/invite', label: 'Invite customer', icon: UserPlus },
+  { to: '/customers/onboarding', label: 'Add customer', icon: UserPlus },
   { to: '/visits/new', label: 'Schedule visit', icon: CalendarPlus },
 ];
 
@@ -78,7 +79,7 @@ const TAB_ITEMS: NavItem[] = [
   { to: '/customers', label: 'Customers', icon: Users },
 ];
 
-const FORM_ROUTES = new Set(['/leads/new', '/customers/onboarding', '/visits/new']);
+const FORM_ROUTES = new Set(['/leads/new', '/customers/onboarding', '/customers/invite', '/visits/new']);
 
 async function signOut() {
   try {
@@ -139,7 +140,12 @@ function AgentShell() {
     api.auth
       .me()
       .then((res) => {
-        if (!cancelled) setUser(res.user);
+        if (!cancelled) {
+          setUser(res.user);
+          if ((res.user as any).needsProfile || (res.user as any).profileComplete === false) {
+            location.href = '/onboarding';
+          }
+        }
       })
       .catch(() => {});
     refreshUnread();
@@ -178,6 +184,7 @@ export function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/onboarding" element={<AgentOnboardingPage />} />
       <Route element={<AuthGate />}>
         <Route index element={<HomePage />} />
         <Route path="/projects" element={<ProjectsPage />} />
@@ -189,6 +196,7 @@ export function App() {
         <Route path="/visits/new" element={<ScheduleVisitPage />} />
         <Route path="/customers" element={<CustomersPage />} />
         <Route path="/customers/onboarding" element={<CustomerOnboardingPage />} />
+        <Route path="/customers/invite" element={<InviteCustomerPage />} />
         <Route path="/reservations" element={<ReservationsPage />} />
         <Route path="/bookings" element={<BookingsPage />} />
         <Route path="/collections" element={<CollectionsPage />} />

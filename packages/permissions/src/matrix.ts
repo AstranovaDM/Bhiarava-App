@@ -22,6 +22,8 @@ export const PERMISSIONS = [
   'sales.reservations.manage',
   'sales.bookings.manage',
   'sales.cancel.approve',
+  'sales.visits.request',
+  'sales.invites.manage',
   'finance.view',
   'finance.operate',
   'finance.reconcile',
@@ -45,6 +47,7 @@ const FULL_OPS: PermissionCode[] = [
   'projects.edit', 'projects.lifecycle', 'projects.publish', 'projects.setup.edit',
   'projects.plots.edit', 'projects.plots.status_override', 'projects.plots.price_override',
   'sales.leads.manage', 'sales.reservations.manage', 'sales.bookings.manage', 'sales.cancel.approve',
+  'sales.visits.request', 'sales.invites.manage',
   'finance.operate', 'finance.reconcile', 'finance.commissions.manage',
   'documents.internal', 'documents.agent_visible', 'documents.customer_related',
   'audit.view', 'settings.manage', 'users.manage', 'customers.pii.reveal',
@@ -61,9 +64,10 @@ export const ROLE_PERMISSIONS: Record<RoleCode, readonly PermissionCode[]> = {
   VIEWER: ['projects.view', 'finance.view', 'reports.view', 'documents.internal'],
   AGENT: [
     'projects.view', 'sales.leads.manage', 'sales.reservations.manage', 'sales.bookings.manage',
+    'sales.visits.request', 'sales.invites.manage',
     'finance.view', 'documents.agent_visible', 'documents.customer_related',
   ],
-  CUSTOMER: ['projects.view', 'documents.customer_related', 'finance.view'],
+  CUSTOMER: ['projects.view', 'documents.customer_related', 'finance.view', 'sales.visits.request'],
 };
 
 export function roleHasPermission(role: RoleCode, permission: PermissionCode): boolean {

@@ -73,3 +73,4 @@ export { ErrorState } from "./components/error-state";
 export { Drawer, type DrawerSide } from "./components/drawer";
 export { Modal, type ModalSize } from "./components/modal";
 export { Tabs, TabPanel, type TabItem } from "./components/tabs";
+export { GoogleSignInButton, type GoogleSignInButtonProps } from "./components/google-sign-in";
