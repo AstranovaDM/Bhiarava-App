@@ -29,7 +29,7 @@ export function validateMpinConfirm(mpin: string, confirm: unknown): MpinFormatD
   const b = validateMpinFormat(confirm);
   if (!b.ok) return b;
   if (a.mpin !== b.mpin) {
-    return { ok: false, code: 'INVALID_MPIN_FORMAT', message: 'MPIN confirmation does not match.' };
+    return { ok: false, code: 'INVALID_MPIN_FORMAT', message: 'pin not matched' };
   }
   return a;
 }
