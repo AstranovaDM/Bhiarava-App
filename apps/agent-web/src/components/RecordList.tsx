@@ -87,7 +87,7 @@ export function Notice({ tone, children }: { tone: 'success' | 'error'; children
       role={tone === 'error' ? 'alert' : 'status'}
       className={cn(
         'rounded-xl px-3.5 py-2.5 text-sm break-words',
-        tone === 'error' ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary',
+        tone === 'error' ? 'bg-destructive/10 text-destructive' : 'bg-success/10 text-success',
       )}
     >
       {children}

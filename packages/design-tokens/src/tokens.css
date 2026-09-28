@@ -4,7 +4,7 @@
  * file and maps the variables into the Tailwind v4 theme.
  *
  * Values mirror `src/index.ts` (kept in sync by `tokens.test.ts`).
- * Surface ladder + primary/luminous greens are LOCKED.
+ * Logo PNG is Source of Truth — blue / gold / white / navy. Green is semantic only.
  */
 
 :root {
@@ -19,42 +19,52 @@
   --mobile-content-pad-bottom: calc(var(--mobile-nav-offset) + 1rem);
   --wizard-action-height: 4.5rem;
 
-  /* Locked tonal surface ladder — green/neutral (not blue-tint) */
-  --surface: #F4F7F5;
+  /* Logo-extracted brand tokens (see packages/design-tokens/src/index.ts) */
+  --brand-primary: #0250A1;
+  --brand-primary-dark: #002C68;
+  --brand-primary-light: #90C8F8;
+  --brand-accent: #F0B038;
+  --brand-accent-soft: #FCF2DF;
+  --brand-surface: #F2F6FA;
+  --brand-selected: #D1E0EE;
+  --brand-foreground: #001F49;
+
+  /* Blue+white tonal surface ladder */
+  --surface: var(--brand-surface);
   --surface-bright: #FFFFFF;
   --surface-lowest: #FFFFFF;
-  --surface-low: #E8F0EB;
-  --surface-c: #DCE8E0;
-  --surface-high: #C8DCD0;
-  --surface-highest: #C8DCD0;
-  --on-surface-tint: #0F1F17;
+  --surface-low: #EBF1F7;
+  --surface-c: #E1EAF4;
+  --surface-high: var(--brand-selected);
+  --surface-highest: var(--brand-selected);
+  --on-surface-tint: var(--brand-foreground);
 
   --background: var(--surface);
-  --foreground: #0F1F17;
+  --foreground: var(--brand-foreground);
   --card: var(--surface-lowest);
   --card-foreground: var(--foreground);
   --popover: var(--surface-lowest);
   --popover-foreground: var(--foreground);
 
-  /* Locked brand greens */
-  --primary: #006D32;
-  --primary-luminous: #00D166;
+  /* Brand blues (mapped for existing primary-* consumers) */
+  --primary: var(--brand-primary);
+  --primary-luminous: var(--brand-primary-light);
   --primary-foreground: #FFFFFF;
-  --primary-container: #BAECCA;
-  --on-primary-container: #003416;
+  --primary-container: #C7D8EA;
+  --on-primary-container: var(--brand-primary-dark);
 
-  /* Neutral secondary — Google Sign-In button is the only intentional blue exception */
-  --secondary: #3D5A4A;
-  --secondary-foreground: #F7FBF8;
-  --secondary-container: #D4E4DA;
+  /* Muted blue-neutral secondary — Google Sign-In keeps Google blue */
+  --secondary: #3F5061;
+  --secondary-foreground: #F4F8FC;
+  --secondary-container: #D5E0EB;
 
-  /* Deprecated decorative gold — aliased to green neutrals (not brand). Warning stays semantic. */
-  --gold: #3D5A4A;
-  --gold-foreground: #F7FBF8;
-  --gold-container: #D4E4DA;
+  /* Logo gold accent — sparse decorative use */
+  --gold: var(--brand-accent);
+  --gold-foreground: #3C2200;
+  --gold-container: var(--brand-accent-soft);
 
   --muted: var(--surface-low);
-  --muted-foreground: #5A6B62;
+  --muted-foreground: #5A6B7A;
   --accent: var(--surface-c);
   --accent-foreground: var(--foreground);
 
@@ -62,19 +72,21 @@
   --destructive-foreground: #FFF9F8;
   --warning: #DA950B;
   --warning-foreground: #3C2200;
+  /* Semantic success only — not brand identity */
   --success: #00884B;
   --success-foreground: #FFFFFF;
 
-  --outline-variant: #A8B8AE;
+  --outline-variant: #A8B4C2;
   --border: color-mix(in oklab, var(--outline-variant) 45%, transparent);
   --input: color-mix(in oklab, var(--outline-variant) 45%, transparent);
   --ring: var(--primary);
 
-  --chart-1: #006D32;
-  --chart-2: #3D5A4A;
-  --chart-3: #6A9A7E;
-  --chart-4: #00D166;
-  --chart-5: #1A4D32;
+  /* Charts: logo blue hierarchy + gold + gray */
+  --chart-1: #0250A1;
+  --chart-2: #002C68;
+  --chart-3: #90C8F8;
+  --chart-4: #F0B038;
+  --chart-5: #64748B;
 
   --sidebar: var(--surface-low);
   --sidebar-foreground: var(--foreground);
@@ -85,11 +97,10 @@
   --sidebar-border: transparent;
   --sidebar-ring: var(--primary);
 
-  --gradient-primary: linear-gradient(135deg, #006D32 0%, #006D32 35%, #00D166 130%);
-  --gradient-luminous: linear-gradient(135deg, #00D166, #006D32);
-  --gradient-flow: linear-gradient(135deg, var(--secondary), #6A9A7E);
-  /* Deprecated — aliased to luminous (no decorative gold). */
-  --gradient-gold: var(--gradient-luminous);
+  --gradient-primary: linear-gradient(135deg, #002C68 0%, #0250A1 45%, #90C8F8 130%);
+  --gradient-luminous: linear-gradient(135deg, #90C8F8, #0250A1);
+  --gradient-flow: linear-gradient(135deg, var(--secondary), #90C8F8);
+  --gradient-gold: linear-gradient(135deg, #F0B038, #F8C048);
 
   /* Plot status — solid (legend/chips), soft fill (layouts), ink (chip text) */
   --plot-available: #4CAF7D;
@@ -125,41 +136,41 @@
 }
 
 .dark {
-  --surface: #0A1410;
-  --surface-bright: #202F28;
-  --surface-lowest: #030C08;
-  --surface-low: #101B16;
-  --surface-c: #16221C;
-  --surface-high: #1E2C24;
-  --surface-highest: #27372E;
-  --on-surface-tint: #000002;
+  --surface: #060E1A;
+  --surface-bright: #1E3048;
+  --surface-lowest: #03080F;
+  --surface-low: #0B1626;
+  --surface-c: #122033;
+  --surface-high: #1A2C44;
+  --surface-highest: #243A54;
+  --on-surface-tint: #E8F0FA;
 
   --background: var(--surface);
-  --foreground: #EDF4EF;
+  --foreground: #E8F0FA;
   --card: var(--surface-low);
   --card-foreground: var(--foreground);
   --popover: var(--surface-low);
   --popover-foreground: var(--foreground);
 
-  --primary: #00D166;
-  --primary-foreground: #01210F;
-  --primary-container: #00522A;
-  --on-primary-container: #BAECCA;
+  --primary: #90C8F8;
+  --primary-foreground: #002C68;
+  --primary-container: #002C68;
+  --on-primary-container: #C7D8EA;
 
-  --secondary: #8FB89F;
-  --secondary-foreground: #04110A;
-  --secondary-container: #1B3C2C;
+  --secondary: #9AADBF;
+  --secondary-foreground: #0A1522;
+  --secondary-container: #1A2C40;
 
-  --gold: #8FB89F;
-  --gold-foreground: #04110A;
-  --gold-container: #1B3C2C;
+  --gold: #F0B038;
+  --gold-foreground: #3C2200;
+  --gold-container: #3A2E14;
 
   --muted: var(--surface-c);
-  --muted-foreground: #98A89E;
+  --muted-foreground: #9AABBC;
   --accent: var(--surface-high);
   --accent-foreground: var(--foreground);
 
-  --outline-variant: #4A6656;
+  --outline-variant: #4A5F75;
   --border: color-mix(in oklab, var(--outline-variant) 45%, transparent);
   --input: color-mix(in oklab, var(--outline-variant) 55%, transparent);
 
@@ -168,6 +179,7 @@
   --sidebar-accent: var(--surface-c);
   --sidebar-accent-foreground: var(--foreground);
 
-  /* Dark primary-foreground is dark ink, so the gradient runs on the luminous end. */
-  --gradient-primary: linear-gradient(135deg, #00A04E 0%, #00D166 45%, #5BE59A 100%);
+  --gradient-primary: linear-gradient(135deg, #002C68 0%, #0250A1 40%, #90C8F8 100%);
+  --gradient-luminous: linear-gradient(135deg, #90C8F8, #0250A1);
+  --gradient-gold: linear-gradient(135deg, #F0B038, #F8C048);
 }
