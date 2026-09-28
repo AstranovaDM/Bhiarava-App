@@ -37,7 +37,11 @@ export function LoginPage() {
   const nav = useNavigate();
   const [params] = useSearchParams();
   const inviteToken = params.get('invite') || undefined;
-  const [mode, setMode] = useState<LoginMode>(inviteToken ? 'google' : 'mpin');
+  const [mode, setMode] = useState<LoginMode>(() => {
+    if (inviteToken) return 'google';
+    if (params.get('forgot') === '1') return 'forgot';
+    return 'mpin';
+  });
   const [identifier, setIdentifier] = useState('');
   const [mpin, setMpin] = useState('');
   const [err, setErr] = useState('');
