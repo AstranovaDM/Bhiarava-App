@@ -129,7 +129,7 @@ export function GoogleSignInButton({
         <div
           id={`gis-${hostId}`}
           ref={hostRef}
-          className="flex min-h-11 w-full justify-center [&iframe]:!w-full"
+          className="flex min-h-11 w-full justify-center google-gis-host"
           aria-label={label}
         />
       ) : (

@@ -52,14 +52,19 @@ export class GoogleAuthService {
     const customer = this.config.get<string>('GOOGLE_CLIENT_ID_CUSTOMER') || process.env.GOOGLE_CLIENT_ID_CUSTOMER;
     const agent = this.config.get<string>('GOOGLE_CLIENT_ID_AGENT') || process.env.GOOGLE_CLIENT_ID_AGENT;
     const shared = this.config.get<string>('GOOGLE_CLIENT_ID') || process.env.GOOGLE_CLIENT_ID;
+    const isProd = (process.env.NODE_ENV || 'development') === 'production';
+    /** Dev-only placeholder audience when client IDs absent. Never in production. */
+    const allowDevAudience =
+      !isProd &&
+      ['1', 'true', 'yes'].includes(String(process.env.GOOGLE_AUTH_DEV_BYPASS || '').toLowerCase());
     if (role === 'CUSTOMER') {
       const ids = [customer, shared].filter(Boolean) as string[];
-      if (!ids.length && process.env.GOOGLE_AUTH_DEV_BYPASS) return 'dev';
+      if (!ids.length && allowDevAudience) return 'dev';
       if (!ids.length) throw new BadRequestException('Google customer client not configured');
       return ids.length === 1 ? ids[0] : ids;
     }
     const ids = [agent, shared].filter(Boolean) as string[];
-    if (!ids.length && process.env.GOOGLE_AUTH_DEV_BYPASS) return 'dev';
+    if (!ids.length && allowDevAudience) return 'dev';
     if (!ids.length) throw new BadRequestException('Google agent client not configured');
     return ids.length === 1 ? ids[0] : ids;
   }
