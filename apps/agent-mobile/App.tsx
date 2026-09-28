@@ -3,6 +3,7 @@ import { Button, FlatList, SafeAreaView, Text, TextInput, View, ScrollView } fro
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
+import { userFacingError } from '@bhairava/api-client';
 import { api, tokens } from './src/api';
 
 const Tab = createBottomTabNavigator();
@@ -13,9 +14,14 @@ function useLiveList(loader: () => Promise<string[]>) {
   const reload = () => {
     loader()
       .then((xs) => setRows(xs.length ? xs : ['No rows']))
-      .catch((e) => { setErr(String(e?.message || e)); setRows([]); });
+      .catch((e) => {
+        setErr(userFacingError(e));
+        setRows([]);
+      });
   };
-  useEffect(() => { reload(); }, []);
+  useEffect(() => {
+    reload();
+  }, []);
   return { rows, err, reload };
 }
 
@@ -48,18 +54,72 @@ function ComposeScreen() {
         <Text style={{ fontWeight: '600', marginTop: 8 }}>New lead</Text>
         <TextInput placeholder="Name" value={leadName} onChangeText={setLeadName} style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, padding: 10, marginVertical: 4 }} />
         <TextInput placeholder="Phone" value={leadPhone} onChangeText={setLeadPhone} style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, padding: 10, marginVertical: 4 }} />
-        <Button title="Create lead" onPress={async () => { setErr(''); try { await api.leads.create({ name: leadName, phone: leadPhone } as any); setMsg('Lead created'); setLeadName(''); setLeadPhone(''); } catch (e: any) { setErr(e.message || String(e)); } }} />
+        <Button
+          title="Create lead"
+          onPress={async () => {
+            setErr('');
+            try {
+              await api.leads.create({ name: leadName, phone: leadPhone } as any);
+              setMsg('Lead created');
+              setLeadName('');
+              setLeadPhone('');
+            } catch (e: unknown) {
+              setErr(userFacingError(e));
+            }
+          }}
+        />
         <Text style={{ fontWeight: '600', marginTop: 16 }}>New customer</Text>
         <TextInput placeholder="Name" value={custName} onChangeText={setCustName} style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, padding: 10, marginVertical: 4 }} />
         <TextInput placeholder="Phone" value={custPhone} onChangeText={setCustPhone} style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, padding: 10, marginVertical: 4 }} />
-        <Button title="Create customer" onPress={async () => { setErr(''); try { const c: any = await api.customers.create({ name: custName, phone: custPhone } as any); setMsg('Customer ' + c.id); setCustomerId(c.id); setCustName(''); setCustPhone(''); } catch (e: any) { setErr(e.message || String(e)); } }} />
+        <Button
+          title="Create customer"
+          onPress={async () => {
+            setErr('');
+            try {
+              const c: any = await api.customers.create({ name: custName, phone: custPhone } as any);
+              setMsg('Customer ' + c.id);
+              setCustomerId(c.id);
+              setCustName('');
+              setCustPhone('');
+            } catch (e: unknown) {
+              setErr(userFacingError(e));
+            }
+          }}
+        />
         <Text style={{ fontWeight: '600', marginTop: 16 }}>Reserve / book</Text>
         <TextInput placeholder="Customer id" value={customerId} onChangeText={setCustomerId} style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, padding: 10, marginVertical: 4 }} />
         <TextInput placeholder="Plot id" value={plotId} onChangeText={setPlotId} style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, padding: 10, marginVertical: 4 }} />
         <View style={{ height: 8 }} />
-        <Button title="Reserve plot" onPress={async () => { setErr(''); try { await api.reservations.create({ plotId, customerId }); setMsg('Reserved'); } catch (e: any) { setErr(e.message || String(e)); } }} />
+        <Button
+          title="Reserve plot"
+          onPress={async () => {
+            setErr('');
+            try {
+              await api.reservations.create({ plotId, customerId });
+              setMsg('Reserved');
+            } catch (e: unknown) {
+              setErr(userFacingError(e));
+            }
+          }}
+        />
         <View style={{ height: 8 }} />
-        <Button title="Book plot" onPress={async () => { setErr(''); try { await api.bookings.create({ plotId, customerId, agreementValuePaise: '200000000', advancePaise: '1000000' } as any); setMsg('Booked'); } catch (e: any) { setErr(e.message || String(e)); } }} />
+        <Button
+          title="Book plot"
+          onPress={async () => {
+            setErr('');
+            try {
+              await api.bookings.create({
+                plotId,
+                customerId,
+                agreementValuePaise: '200000000',
+                advancePaise: '1000000',
+              } as any);
+              setMsg('Booked');
+            } catch (e: unknown) {
+              setErr(userFacingError(e));
+            }
+          }}
+        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -86,7 +146,18 @@ function Login({ onDone }: { onDone: () => void }) {
       <TextInput autoCapitalize="none" value={email} onChangeText={setEmail} placeholder="Email" style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, padding: 10, marginBottom: 8 }} />
       <TextInput secureTextEntry value={password} onChangeText={setPassword} placeholder="Password" style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, padding: 10, marginBottom: 8 }} />
       {err ? <Text style={{ color: '#b91c1c' }}>{err}</Text> : null}
-      <Button title="Sign in" onPress={async () => { try { const s = await api.auth.login(email, password); await tokens.setTokens(s.accessToken, s.refreshToken ?? null); onDone(); } catch (e: any) { setErr(e.message || 'Login failed'); } }} />
+      <Button
+        title="Sign in"
+        onPress={async () => {
+          try {
+            const s = await api.auth.login(email, password);
+            await tokens.setTokens(s.accessToken, s.refreshToken ?? null);
+            onDone();
+          } catch (e: unknown) {
+            setErr(userFacingError(e, { context: 'auth', fallback: 'Login failed' }));
+          }
+        }}
+      />
     </SafeAreaView>
   );
 }

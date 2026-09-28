@@ -3,6 +3,7 @@ import { Button, FlatList, SafeAreaView, Text, TextInput, View, ScrollView } fro
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
+import { userFacingError } from '@bhairava/api-client';
 import { api, tokens } from './src/api';
 
 const Tab = createBottomTabNavigator();
@@ -11,7 +12,12 @@ function useLiveList(loader: () => Promise<string[]>) {
   const [rows, setRows] = useState<string[]>(['Loading...']);
   const [err, setErr] = useState('');
   useEffect(() => {
-    loader().then((xs) => setRows(xs.length ? xs : ['No rows'])).catch((e) => { setErr(String(e?.message || e)); setRows([]); });
+    loader()
+      .then((xs) => setRows(xs.length ? xs : ['No rows']))
+      .catch((e) => {
+        setErr(userFacingError(e));
+        setRows([]);
+      });
   }, []);
   return { rows, err };
 }
@@ -36,7 +42,18 @@ function DetailScreen() {
       <ScrollView contentContainerStyle={{ padding: 16 }}>
         <Text style={{ fontSize: 22, fontWeight: '700' }}>Explore plots</Text>
         <TextInput placeholder="Project id" value={projectId} onChangeText={setProjectId} style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, padding: 10, marginVertical: 8 }} />
-        <Button title="Load plots" onPress={async () => { setErr(''); try { const rows = await api.plots.listByProject(projectId); setPlots(rows.map((p: any) => (p.number || p.id) + ' · ' + p.status)); } catch (e: any) { setErr(e.message || String(e)); } }} />
+        <Button
+          title="Load plots"
+          onPress={async () => {
+            setErr('');
+            try {
+              const rows = await api.plots.listByProject(projectId);
+              setPlots(rows.map((p: any) => (p.number || p.id) + ' · ' + p.status));
+            } catch (e: unknown) {
+              setErr(userFacingError(e));
+            }
+          }}
+        />
         {err ? <Text style={{ color: '#b91c1c' }}>{err}</Text> : null}
         {plots.map((p, i) => <Text key={i} style={{ paddingVertical: 6 }}>{p}</Text>)}
       </ScrollView>
@@ -65,7 +82,18 @@ function Login({ onDone }: { onDone: () => void }) {
       <TextInput autoCapitalize="none" value={email} onChangeText={setEmail} placeholder="Email" style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, padding: 10, marginBottom: 8 }} />
       <TextInput secureTextEntry value={password} onChangeText={setPassword} placeholder="Password" style={{ borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, padding: 10, marginBottom: 8 }} />
       {err ? <Text style={{ color: '#b91c1c' }}>{err}</Text> : null}
-      <Button title="Sign in" onPress={async () => { try { const s = await api.auth.login(email, password); await tokens.setTokens(s.accessToken, s.refreshToken ?? null); onDone(); } catch (e: any) { setErr(e.message || 'Login failed'); } }} />
+      <Button
+        title="Sign in"
+        onPress={async () => {
+          try {
+            const s = await api.auth.login(email, password);
+            await tokens.setTokens(s.accessToken, s.refreshToken ?? null);
+            onDone();
+          } catch (e: unknown) {
+            setErr(userFacingError(e, { context: 'auth', fallback: 'Login failed' }));
+          }
+        }}
+      />
     </SafeAreaView>
   );
 }

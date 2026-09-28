@@ -1,3 +1,5 @@
+import { userFacingError } from '@bhairava/api-client';
+
 const inr = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
 const count = new Intl.NumberFormat('en-IN');
 
@@ -57,9 +59,7 @@ export function shortRef(id: unknown): string {
 }
 
 export function errorMessage(e: unknown): string {
-  if (e instanceof Error) return e.message;
-  if (typeof e === 'string') return e;
-  return 'Request failed';
+  return userFacingError(e);
 }
 
 /** Value for `<input type="datetime-local">` in the browser's local time zone. */

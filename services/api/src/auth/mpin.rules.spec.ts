@@ -30,6 +30,15 @@ describe('MPIN format', () => {
     expect(validateMpinConfirm('1234', '1234').ok).toBe(true);
     expect(validateMpinConfirm('1234', '4321').ok).toBe(false);
   });
+
+  it('mismatch returns message "pin not matched"', () => {
+    const result = validateMpinConfirm('1234', '4321');
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.message).toBe('pin not matched');
+      expect(result.code).toBe('INVALID_MPIN_FORMAT');
+    }
+  });
 });
 
 describe('MPIN lockout', () => {

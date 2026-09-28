@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
+import { userFacingError } from '@bhairava/api-client';
+import {
+  MPIN_UX,
+  canSubmitMpinSetup,
+  sanitizeMpinInput,
+  validateMpinSetupPair,
+} from '@bhairava/domain';
 import { Btn, BrandWordmark, Field, GoogleSignInButton, Panel, TextInput } from '@bhairava/ui-web';
 import { acceptSession, api } from '../api';
 import { LOGO_SRC } from '../basePath';
@@ -49,7 +56,7 @@ export function LoginPage() {
         await acceptSession(s);
         nav(nextPath(s.user as any));
       } catch (ex) {
-        setErr(errorMessage(ex) || 'Google sign-in failed');
+        setErr(userFacingError(ex, { context: 'auth', fallback: 'Google sign-in failed' }));
       } finally {
         setBusy(false);
       }
@@ -70,7 +77,7 @@ export function LoginPage() {
       await acceptSession(s);
       nav(nextPath(s.user as any));
     } catch (ex) {
-      setErr(errorMessage(ex) || 'Sign-in failed');
+      setErr(userFacingError(ex, { context: 'mpin_login', fallback: 'Sign-in failed' }));
     } finally {
       setBusy(false);
     }
@@ -306,9 +313,16 @@ export function AgentMpinPage() {
   const reset = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('reset') === '1';
   const [mpin, setMpin] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [mpinErr, setMpinErr] = useState('');
+  const [confirmErr, setConfirmErr] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
+
+  const liveMismatch =
+    mpin.length === 4 && confirm.length === 4 && mpin !== confirm ? MPIN_UX.mismatch : '';
+  const confirmFieldError = confirmErr || liveMismatch;
+  const canSubmit = canSubmitMpinSetup(mpin, confirm);
 
   useEffect(() => {
     let cancelled = false;
@@ -344,10 +358,34 @@ export function AgentMpinPage() {
     };
   }, [nav, reset]);
 
+  function onMpinChange(raw: string) {
+    setErr('');
+    setConfirmErr('');
+    if (/[^\d]/.test(raw)) setMpinErr(MPIN_UX.digitsOnly);
+    else setMpinErr('');
+    setMpin(sanitizeMpinInput(raw));
+  }
+
+  function onConfirmChange(raw: string) {
+    setErr('');
+    setMpinErr('');
+    if (/[^\d]/.test(raw)) setConfirmErr(MPIN_UX.digitsOnly);
+    else setConfirmErr('');
+    setConfirm(sanitizeMpinInput(raw));
+  }
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    setBusy(true);
     setErr('');
+    setMpinErr('');
+    setConfirmErr('');
+    const pair = validateMpinSetupPair(mpin, confirm);
+    if (!pair.ok) {
+      if (pair.field === 'mpin') setMpinErr(pair.message);
+      else setConfirmErr(pair.message);
+      return;
+    }
+    setBusy(true);
     try {
       if (reset) {
         const idToken = sessionStorage.getItem('bhairava.mpin.reset.idToken') || '';
@@ -359,7 +397,12 @@ export function AgentMpinPage() {
       }
       nav('/');
     } catch (ex) {
-      setErr(errorMessage(ex));
+      const mapped = userFacingError(ex, { context: 'mpin_save' });
+      if (mapped === MPIN_UX.mismatchRetry || mapped.includes('MPINs do not match')) {
+        setConfirmErr(MPIN_UX.mismatch);
+      } else {
+        setErr(mapped);
+      }
     } finally {
       setBusy(false);
     }
@@ -387,27 +430,33 @@ export function AgentMpinPage() {
             Choose exactly 4 digits. Used for quick unlock — Google recovers your account.
           </p>
           <form onSubmit={onSubmit} className="mt-6 space-y-4" data-testid="agent-mpin-setup">
-            <Field label="MPIN" required>
+            <Field label="MPIN" required error={mpinErr || undefined}>
               <TextInput
                 type="password"
                 inputMode="numeric"
+                pattern="[0-9]*"
+                autoComplete="new-password"
                 value={mpin}
-                onChange={(v) => setMpin(v.replace(/\D/g, '').slice(0, 4))}
+                onChange={onMpinChange}
                 required
                 maxLength={4}
-                placeholder="4 digits"
+                placeholder="••••"
+                invalid={Boolean(mpinErr)}
                 data-testid="agent-mpin-create"
               />
             </Field>
-            <Field label="Confirm MPIN" required>
+            <Field label="Confirm MPIN" required error={confirmFieldError || undefined}>
               <TextInput
                 type="password"
                 inputMode="numeric"
+                pattern="[0-9]*"
+                autoComplete="new-password"
                 value={confirm}
-                onChange={(v) => setConfirm(v.replace(/\D/g, '').slice(0, 4))}
+                onChange={onConfirmChange}
                 required
                 maxLength={4}
-                placeholder="Repeat MPIN"
+                placeholder="••••"
+                invalid={Boolean(confirmFieldError)}
                 data-testid="agent-mpin-confirm"
               />
             </Field>
@@ -416,7 +465,7 @@ export function AgentMpinPage() {
               type="submit"
               variant="primary"
               className="h-11 w-full"
-              disabled={busy || mpin.length !== 4 || confirm.length !== 4}
+              disabled={busy || !canSubmit}
               data-testid="agent-mpin-submit"
             >
               {busy ? 'Saving…' : 'Go Active'}
