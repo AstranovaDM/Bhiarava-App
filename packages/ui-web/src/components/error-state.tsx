@@ -1,17 +1,8 @@
 import { AlertTriangle, RotateCw } from "lucide-react";
 import type { ReactNode } from "react";
+import { userFacingError } from "@bhairava/api-client";
 import { cn } from "../lib/utils";
 import { btnClasses } from "./kit";
-
-function messageFrom(error: unknown): string | undefined {
-  if (!error) return undefined;
-  if (typeof error === "string") return error;
-  if (error instanceof Error) return error.message;
-  if (typeof error === "object" && "message" in error && typeof error.message === "string") {
-    return error.message;
-  }
-  return undefined;
-}
 
 export function ErrorState({
   title = "Something went wrong",
@@ -33,7 +24,7 @@ export function ErrorState({
   compact?: boolean;
   className?: string;
 }) {
-  const detail = description ?? messageFrom(error);
+  const detail = description ?? (error != null ? userFacingError(error) : undefined);
   return (
     <div
       role="alert"

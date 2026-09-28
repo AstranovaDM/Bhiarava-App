@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { userFacingError } from '@bhairava/api-client';
 import { tokens } from '../api';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -7,10 +8,7 @@ export type AnyRow = Record<string, any>;
 export const DASH = '—';
 
 export function errMsg(e: unknown): string {
-  if (!e) return 'Unknown error';
-  if (typeof e === 'string') return e;
-  const m = (e as { message?: unknown }).message;
-  return typeof m === 'string' && m ? m : String(e);
+  return userFacingError(e);
 }
 
 export function useAuthed() {

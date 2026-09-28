@@ -1,3 +1,5 @@
+import { userFacingError } from '@bhairava/api-client';
+
 const inr = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 });
 
 /** Money fields from the API are integer paise serialized as strings. */
@@ -59,7 +61,5 @@ export function shortId(id: string | null | undefined): string {
 }
 
 export function errorMessage(error: unknown): string {
-  if (!error) return '';
-  if (error instanceof Error) return error.message;
-  return String(error);
+  return userFacingError(error);
 }

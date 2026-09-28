@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { userFacingError } from '@bhairava/api-client';
+import {
+  MPIN_UX,
+  canSubmitMpinSetup,
+  sanitizeMpinInput,
+  validateMpinDigitsInput,
+  validateMpinSetupPair,
+} from '@bhairava/domain';
 import { Btn, BrandWordmark, Field, GoogleSignInButton, Panel, TextInput } from '@bhairava/ui-web';
 import { acceptSession, api } from '../api';
 import { LOGO_SRC } from '../basePath';
@@ -67,7 +75,7 @@ export function LoginPage() {
         await acceptSession(s);
         nav(nextPath(s.user as any, inviteToken));
       } catch (ex: any) {
-        setErr(ex?.message || 'Google sign-in failed');
+        setErr(userFacingError(ex, { context: 'auth', fallback: 'Google sign-in failed' }));
       } finally {
         setSubmitting(false);
       }
@@ -88,7 +96,7 @@ export function LoginPage() {
       await acceptSession(s);
       nav(nextPath(s.user as any));
     } catch (ex: any) {
-      setErr(ex?.message || 'Sign-in failed');
+      setErr(userFacingError(ex, { context: 'mpin_login', fallback: 'Sign-in failed' }));
     } finally {
       setSubmitting(false);
     }
@@ -266,7 +274,7 @@ export function CustomerOnboardingPage() {
       });
       nav('/mpin');
     } catch (ex: any) {
-      setErr(ex?.message || 'Could not save profile');
+      setErr(userFacingError(ex, { fallback: 'Could not save profile' }));
     } finally {
       setBusy(false);
     }
@@ -355,9 +363,16 @@ export function CustomerMpinPage() {
   const reset = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('reset') === '1';
   const [mpin, setMpin] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [mpinErr, setMpinErr] = useState('');
+  const [confirmErr, setConfirmErr] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
+
+  const liveMismatch =
+    mpin.length === 4 && confirm.length === 4 && mpin !== confirm ? MPIN_UX.mismatch : '';
+  const confirmFieldError = confirmErr || liveMismatch;
+  const canSubmit = canSubmitMpinSetup(mpin, confirm);
 
   useEffect(() => {
     let cancelled = false;
@@ -393,10 +408,42 @@ export function CustomerMpinPage() {
     };
   }, [nav, reset]);
 
+  function onMpinChange(raw: string) {
+    setErr('');
+    setConfirmErr('');
+    const digitsCheck = validateMpinDigitsInput(raw);
+    if (!digitsCheck.ok && /[^\d]/.test(raw)) {
+      setMpinErr(MPIN_UX.digitsOnly);
+    } else {
+      setMpinErr('');
+    }
+    setMpin(sanitizeMpinInput(raw));
+  }
+
+  function onConfirmChange(raw: string) {
+    setErr('');
+    setMpinErr('');
+    const digitsCheck = validateMpinDigitsInput(raw);
+    if (!digitsCheck.ok && /[^\d]/.test(raw)) {
+      setConfirmErr(MPIN_UX.digitsOnly);
+    } else {
+      setConfirmErr('');
+    }
+    setConfirm(sanitizeMpinInput(raw));
+  }
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    setBusy(true);
     setErr('');
+    setMpinErr('');
+    setConfirmErr('');
+    const pair = validateMpinSetupPair(mpin, confirm);
+    if (!pair.ok) {
+      if (pair.field === 'mpin') setMpinErr(pair.message);
+      else setConfirmErr(pair.message);
+      return;
+    }
+    setBusy(true);
     try {
       if (reset) {
         const idToken = sessionStorage.getItem('bhairava.mpin.reset.idToken') || '';
@@ -407,8 +454,13 @@ export function CustomerMpinPage() {
         await api.auth.mpinSetup({ mpin, confirmMpin: confirm });
       }
       nav('/');
-    } catch (ex: any) {
-      setErr(ex?.message || 'Could not save MPIN');
+    } catch (ex: unknown) {
+      const mapped = userFacingError(ex, { context: 'mpin_save' });
+      if (mapped === MPIN_UX.mismatchRetry || mapped.includes('MPINs do not match')) {
+        setConfirmErr(MPIN_UX.mismatch);
+      } else {
+        setErr(mapped);
+      }
     } finally {
       setBusy(false);
     }
@@ -436,27 +488,33 @@ export function CustomerMpinPage() {
             Choose exactly 4 digits for quick unlock. Google recovers your account if you forget.
           </p>
           <form className="mt-6 space-y-4" onSubmit={onSubmit} data-testid="customer-mpin-setup">
-            <Field label="MPIN" required>
+            <Field label="MPIN" required error={mpinErr || undefined}>
               <TextInput
                 type="password"
                 inputMode="numeric"
+                pattern="[0-9]*"
+                autoComplete="new-password"
                 value={mpin}
-                onChange={(v) => setMpin(v.replace(/\D/g, '').slice(0, 4))}
+                onChange={onMpinChange}
                 required
                 maxLength={4}
-                placeholder="4 digits"
+                placeholder="••••"
+                invalid={Boolean(mpinErr)}
                 data-testid="customer-mpin-create"
               />
             </Field>
-            <Field label="Confirm MPIN" required>
+            <Field label="Confirm MPIN" required error={confirmFieldError || undefined}>
               <TextInput
                 type="password"
                 inputMode="numeric"
+                pattern="[0-9]*"
+                autoComplete="new-password"
                 value={confirm}
-                onChange={(v) => setConfirm(v.replace(/\D/g, '').slice(0, 4))}
+                onChange={onConfirmChange}
                 required
                 maxLength={4}
-                placeholder="Repeat MPIN"
+                placeholder="••••"
+                invalid={Boolean(confirmFieldError)}
                 data-testid="customer-mpin-confirm"
               />
             </Field>
@@ -465,7 +523,7 @@ export function CustomerMpinPage() {
               type="submit"
               variant="primary"
               className="h-11 w-full"
-              disabled={busy || mpin.length !== 4 || confirm.length !== 4}
+              disabled={busy || !canSubmit}
               data-testid="customer-mpin-submit"
             >
               {busy ? 'Saving…' : 'Go Active'}

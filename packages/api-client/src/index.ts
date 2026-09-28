@@ -3,8 +3,10 @@ import type {
   LeadSummary, PaymentSummary, PlotSummary, ProjectSummary, PublicUser,
   ReservationSummary, VisitSummary,
 } from './types';
+import { ApiError, createApiErrorFromResponse, createNetworkApiError, USER_ERROR_COPY } from './errors';
 
 export * from './types';
+export * from './errors';
 export type {
   ProjectSummary as ProjectSummary,
   PlotSummary as PlotSummary,
@@ -104,12 +106,16 @@ export function createApiClient(opts: ApiClientOptions) {
     if (access) headers.Authorization = 'Bearer ' + access;
 
     async function doFetch(h: Record<string, string>) {
-      return fetch(base + path, {
-        method,
-        headers: h,
-        body: body === undefined ? undefined : JSON.stringify(body),
-        credentials: 'include',
-      });
+      try {
+        return await fetch(base + path, {
+          method,
+          headers: h,
+          body: body === undefined ? undefined : JSON.stringify(body),
+          credentials: 'include',
+        });
+      } catch (cause) {
+        throw createNetworkApiError(cause);
+      }
     }
 
     let res = await doFetch(headers);
@@ -120,13 +126,17 @@ export function createApiClient(opts: ApiClientOptions) {
         headers.Authorization = 'Bearer ' + newAccess;
         res = await doFetch(headers);
       } else {
-        throw new Error('Unauthorized');
+        throw new ApiError('SESSION_EXPIRED', USER_ERROR_COPY.SESSION_EXPIRED, {
+          status: 401,
+          method,
+          path,
+        });
       }
     }
     if (!res.ok) {
       if (res.status === 401) notifyUnauthorizedOnce();
       const text = await res.text();
-      throw new Error(method + ' ' + path + ' → ' + res.status + ' ' + text);
+      throw createApiErrorFromResponse({ method, path, status: res.status, bodyText: text });
     }
     if (res.status === 204) return undefined as T;
     return (await res.json()) as T;

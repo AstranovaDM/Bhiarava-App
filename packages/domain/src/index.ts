@@ -15,6 +15,7 @@ export * from './plot-status-colors';
 export * from './layout-api';
 export * from './google-auth-rules';
 export * from './mpin-rules';
+export * from './mpin-ux';
 
 /** Explicit named re-exports so Vite/Rollup can resolve CJS interop. */
 export {
@@ -71,3 +72,10 @@ export {
   isMpinEligibleRole,
   normalizeMpinLoginIdentifier,
 } from './mpin-rules';
+export {
+  MPIN_UX,
+  sanitizeMpinInput,
+  validateMpinDigitsInput,
+  validateMpinSetupPair,
+  canSubmitMpinSetup,
+} from './mpin-ux';

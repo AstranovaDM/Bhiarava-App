@@ -23,6 +23,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@bhairava/api-client": "*",
     "@bhairava/design-tokens": "*",
     "@bhairava/domain": "*",
     "clsx": "^2.1.1",
