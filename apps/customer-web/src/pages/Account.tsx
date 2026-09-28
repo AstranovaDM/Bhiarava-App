@@ -1,13 +1,16 @@
-import { CreditCard, FileText, LifeBuoy, Map as MapIcon, ShieldCheck, UserRound } from 'lucide-react';
+import { CreditCard, FileText, KeyRound, LifeBuoy, LogOut, Map as MapIcon, ShieldCheck, UserRound } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { Chip, LoadingState, PageHeader, Panel, SectionTitle } from '@bhairava/ui-web';
+import { Btn, Chip, LinkBtn, LoadingState, PageHeader, Panel, SectionTitle } from '@bhairava/ui-web';
 import { api } from '../api';
 import { FactGrid } from '../components';
 import { humanize } from '../lib/format';
 import type { CustomerBooking } from '../lib/types';
 import { useApi } from '../lib/use-api';
 import { useCustomerSession } from '../shell';
+
+/** Display version for Account & Security — keep in sync with apps/customer-web/package.json. */
+const APP_VERSION = '0.1.0';
 
 const topics: Array<{ to: string; title: string; body: string; icon: LucideIcon }> = [
   { to: '/payments', title: 'Payments & receipts', body: 'Check recorded payments and print receipts.', icon: CreditCard },
@@ -78,11 +81,11 @@ export function SupportPage() {
 }
 
 export function ProfilePage() {
-  const { user } = useCustomerSession();
+  const { user, signOut } = useCustomerSession();
 
   return (
     <div className="space-y-8">
-      <PageHeader eyebrow="Account" title="Profile" description="The details we have on file for your customer account." />
+      <PageHeader eyebrow="Account" title="Profile" description="Your customer details, sign-in, and account security." />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <Panel className="sm:p-8">
@@ -113,6 +116,36 @@ export function ProfilePage() {
           </p>
         </Panel>
       </div>
+
+      <Panel className="sm:p-8">
+        <SectionTitle aside={<KeyRound className="h-4 w-4" />}>Account & Security</SectionTitle>
+        <dl className="space-y-5">
+          <div className="min-w-0">
+            <dt className="text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">Google Account</dt>
+            <dd className="truncate pt-1.5 text-base font-medium">{user?.email || '—'}</dd>
+          </div>
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div className="min-w-0">
+              <dt className="text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">MPIN</dt>
+              <dd className="pt-1.5 text-base font-medium tracking-[0.35em]" aria-label="MPIN set">
+                {user?.mpinSet === false ? 'Not set' : '••••'}
+              </dd>
+            </div>
+            <LinkBtn to="/login?forgot=1" variant="tonal" className="shrink-0">
+              Change MPIN
+            </LinkBtn>
+          </div>
+          <div className="min-w-0">
+            <dt className="text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">App version</dt>
+            <dd className="numeric pt-1.5 text-base font-medium">{APP_VERSION}</dd>
+          </div>
+        </dl>
+        <div className="mt-6">
+          <Btn variant="tonal" onClick={signOut} data-testid="customer-profile-sign-out">
+            <LogOut className="h-4 w-4 text-primary" /> Sign out
+          </Btn>
+        </div>
+      </Panel>
     </div>
   );
 }

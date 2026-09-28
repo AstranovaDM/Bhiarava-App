@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { ShieldCheck } from 'lucide-react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { userFacingError } from '@bhairava/api-client';
 import {
   MPIN_UX,
@@ -34,7 +33,8 @@ type LoginMode = 'mpin' | 'google' | 'forgot';
 
 export function LoginPage() {
   const nav = useNavigate();
-  const [mode, setMode] = useState<LoginMode>('mpin');
+  const [params] = useSearchParams();
+  const [mode, setMode] = useState<LoginMode>(() => (params.get('forgot') === '1' ? 'forgot' : 'mpin'));
   const [identifier, setIdentifier] = useState('');
   const [mpin, setMpin] = useState('');
   const [err, setErr] = useState('');
@@ -56,7 +56,7 @@ export function LoginPage() {
         await acceptSession(s);
         nav(nextPath(s.user as any));
       } catch (ex) {
-        setErr(userFacingError(ex, { context: 'auth', fallback: 'Google sign-in failed' }));
+        setErr(userFacingError(ex, { context: 'agent_auth' }));
       } finally {
         setBusy(false);
       }
@@ -77,7 +77,7 @@ export function LoginPage() {
       await acceptSession(s);
       nav(nextPath(s.user as any));
     } catch (ex) {
-      setErr(userFacingError(ex, { context: 'mpin_login', fallback: 'Sign-in failed' }));
+      setErr(userFacingError(ex, { context: 'mpin_login' }));
     } finally {
       setBusy(false);
     }
@@ -174,9 +174,8 @@ export function LoginPage() {
               </button>
             </>
           )}
-          <p className="mt-5 flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
-            <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
-            Your session is held in memory and renewed through a secure HTTP-only cookie.
+          <p className="mt-5 text-center text-xs leading-relaxed text-muted-foreground">
+            Google remains your account recovery. Use Change MPIN from Profile anytime.
           </p>
         </Panel>
       </div>

@@ -5,6 +5,7 @@ import {
   Chip,
   EmptyState,
   ErrorState,
+  LinkBtn,
   LoadingState,
   PageHeader,
   Panel,
@@ -17,6 +18,9 @@ import { Notice, RecordList } from '../components/RecordList';
 import { useRows, type Row } from '../lib/data';
 import { errorMessage, formatDate, formatDateTime, humanize, text } from '../lib/format';
 import { useSession } from '../session';
+
+/** Display version for Account & Security — keep in sync with apps/agent-web/package.json. */
+const APP_VERSION = '0.1.0';
 
 export function DocumentsPage() {
   const documents = useRows(() => api.documents.list());
@@ -157,7 +161,7 @@ export function ProfilePage() {
   const { user, signOut } = useSession();
   return (
     <div className="mx-auto max-w-3xl">
-      <PageHeader eyebrow="Ops" title="Profile" description="Your agent identity and how this portal protects your session and data." />
+      <PageHeader eyebrow="Ops" title="Profile" description="Your agent identity, sign-in details, and account security." />
       <div className="space-y-4">
         <Panel>
           <SectionTitle aside={<UserCog className="h-4 w-4" />}>Signed in as</SectionTitle>
@@ -174,14 +178,30 @@ export function ProfilePage() {
         </Panel>
 
         <Panel>
-          <SectionTitle aside={<KeyRound className="h-4 w-4" />}>Session</SectionTitle>
-          <ul className="space-y-2.5 text-sm leading-relaxed text-muted-foreground">
-            <li>Your access token (JWT) lives only in this tab's memory and is never written to local storage.</li>
-            <li>When it expires, or after a reload, the portal renews it through a secure HTTP-only refresh cookie.</li>
-            <li>Signing out revokes the refresh cookie on the server and clears the in-memory token.</li>
-          </ul>
+          <SectionTitle aside={<KeyRound className="h-4 w-4" />}>Account & Security</SectionTitle>
+          <dl className="space-y-5">
+            <div className="min-w-0">
+              <dt className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">Google Account</dt>
+              <dd className="truncate pt-1 text-sm font-medium">{text(user?.email)}</dd>
+            </div>
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div className="min-w-0">
+                <dt className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">MPIN</dt>
+                <dd className="pt-1 text-sm font-medium tracking-[0.35em]" aria-label="MPIN set">
+                  {user?.mpinSet === false ? 'Not set' : '••••'}
+                </dd>
+              </div>
+              <LinkBtn to="/login?forgot=1" variant="tonal" className="shrink-0">
+                Change MPIN
+              </LinkBtn>
+            </div>
+            <div className="min-w-0">
+              <dt className="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">App version</dt>
+              <dd className="numeric pt-1 text-sm font-medium">{APP_VERSION}</dd>
+            </div>
+          </dl>
           <div className="mt-5">
-            <Btn variant="tonal" onClick={signOut}>
+            <Btn variant="tonal" onClick={signOut} data-testid="agent-profile-sign-out">
               <LogOut className="h-4 w-4 text-primary" /> Sign out
             </Btn>
           </div>

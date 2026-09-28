@@ -67,17 +67,19 @@ type CustomerSession = {
   user: PublicUser | null;
   unreadCount: number;
   refreshUnread: () => void;
+  signOut: () => void;
 };
 
 const SessionContext = createContext<CustomerSession>({
   user: null,
   unreadCount: 0,
   refreshUnread: () => {},
+  signOut: () => {},
 });
 
 export const useCustomerSession = () => useContext(SessionContext);
 
-async function signOut() {
+async function performSignOut() {
   try {
     await api.auth.logout();
   } catch {
@@ -122,7 +124,7 @@ function AuthenticatedShell() {
   useEffect(refreshUnread, [pathname, refreshUnread]);
 
   return (
-    <SessionContext.Provider value={{ user, unreadCount, refreshUnread }}>
+    <SessionContext.Provider value={{ user, unreadCount, refreshUnread, signOut: () => void performSignOut() }}>
       <AppShell
         navGroups={navGroups}
         tabItems={tabItems}
@@ -132,7 +134,7 @@ function AuthenticatedShell() {
         brandSubtitle="Customer portal"
         logoSrc={LOGO_SRC}
         user={user ? { name: user.displayName, email: user.email ?? undefined } : null}
-        onSignOut={() => void signOut()}
+        onSignOut={() => void performSignOut()}
         notificationsTo="/notifications"
         notificationCount={unreadCount}
       >

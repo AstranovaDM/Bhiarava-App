@@ -11,7 +11,7 @@ import {
   userMessageForCategory,
 } from './errors';
 
-const LEAK_RES = /statusCode|requestId|timestamp|\/api\/|Bad Request|Internal Server Error|POST\s+\/|→\s*\d{3}/i;
+const LEAK_RES = /statusCode|requestId|timestamp|\/api\/|Bad Request|Internal Server Error|Forbidden|\b403\b|POST\s+\/|→\s*\d{3}/i;
 
 function assertNoLeak(text: string) {
   assert.equal(isUnsafeUserMessage(text), false, `unsafe user message: ${text}`);
@@ -65,6 +65,100 @@ describe('api error mapper', () => {
 
     assert.equal(categorizeFromStatusAndMessage(401, 'Unauthorized'), 'SESSION_EXPIRED');
     assert.equal(userMessageForCategory('SESSION_EXPIRED'), 'Your session has expired. Please sign in again.');
+  });
+
+  it('maps Agent portal 403 role mismatch to friendly Agent copy (never Sign-in failed)', () => {
+    const err = createApiErrorFromResponse({
+      method: 'POST',
+      path: '/api/auth/google/agent',
+      status: 403,
+      bodyText: JSON.stringify({
+        statusCode: 403,
+        message: 'This Google account is not an agent login.',
+        error: 'Forbidden',
+        requestId: 'req_role',
+        timestamp: '2026-09-28T00:00:00.000Z',
+        path: '/api/auth/google/agent',
+      }),
+    });
+    assert.equal(err.category, 'ROLE_MISMATCH');
+    assert.notEqual(err.message, USER_ERROR_COPY.AUTH_ERROR);
+    assert.doesNotMatch(err.message, /Sign-in failed/i);
+    assertNoLeak(err.message);
+
+    const friendly = userFacingError(err, { context: 'agent_auth' });
+    assert.equal(friendly, USER_ERROR_COPY.AGENT_ROLE_MISMATCH);
+    assert.equal(friendly, 'This Google account is not registered as an Agent.');
+    assertNoLeak(friendly);
+  });
+
+  it('maps suspended Agent 403 to friendly Agent unavailable copy', () => {
+    const err = createApiErrorFromResponse({
+      method: 'POST',
+      path: '/api/auth/google/agent',
+      status: 403,
+      bodyText: JSON.stringify({
+        statusCode: 403,
+        message: 'Account suspended',
+        error: 'Forbidden',
+        requestId: 'req_susp',
+        timestamp: '2026-09-28T00:00:00.000Z',
+        path: '/api/auth/google/agent',
+      }),
+    });
+    assert.equal(err.category, 'ACCOUNT_UNAVAILABLE');
+    assert.doesNotMatch(err.message, /Sign-in failed/i);
+    assertNoLeak(err.message);
+
+    const friendly = userFacingError(err, { context: 'agent_auth' });
+    assert.equal(friendly, USER_ERROR_COPY.AGENT_ACCOUNT_UNAVAILABLE);
+    assert.equal(friendly, 'Your Agent account is currently unavailable. Please contact Bhairava.');
+    assertNoLeak(friendly);
+  });
+
+  it('maps generic Agent 403 and session expired without transport leaks', () => {
+    const denied = createApiErrorFromResponse({
+      method: 'POST',
+      path: '/api/auth/google/agent',
+      status: 403,
+      bodyText: JSON.stringify({
+        statusCode: 403,
+        message: 'Forbidden',
+        error: 'Forbidden',
+        requestId: 'req_den',
+        path: '/api/auth/google/agent',
+      }),
+    });
+    assert.equal(denied.category, 'ACCESS_DENIED');
+    const deniedCopy = userFacingError(denied, { context: 'agent_auth' });
+    assert.equal(deniedCopy, USER_ERROR_COPY.AGENT_ACCESS_DENIED);
+    assertNoLeak(deniedCopy);
+    assert.doesNotMatch(deniedCopy, /403|Forbidden|requestId|\/api\//i);
+
+    const expired = createApiErrorFromResponse({
+      method: 'GET',
+      path: '/api/auth/me',
+      status: 401,
+      bodyText: JSON.stringify({
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+        requestId: 'req_401',
+        path: '/api/auth/me',
+      }),
+    });
+    assert.equal(expired.category, 'SESSION_EXPIRED');
+    assert.equal(
+      userFacingError(expired, { context: 'agent_auth' }),
+      'Your session has expired. Please sign in again.',
+    );
+
+    const dump =
+      'POST /api/auth/google/agent → 403 {"statusCode":403,"message":"This Google account is not an agent login.","error":"Forbidden","requestId":"abc","timestamp":"t","path":"/api/auth/google/agent"}';
+    const fromDump = userFacingError(new Error(dump), { context: 'agent_auth' });
+    assert.equal(fromDump, 'This Google account is not registered as an Agent.');
+    assertNoLeak(fromDump);
+    assert.doesNotMatch(fromDump, /403|Forbidden|statusCode|requestId|\/api\/|Sign-in failed/i);
   });
 
   it('maps 500 to SERVER_ERROR', () => {
